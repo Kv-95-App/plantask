@@ -1,0 +1,4 @@
+package kv.apps.taskmanager.di
+
+class TaskManagerApp {
+}
