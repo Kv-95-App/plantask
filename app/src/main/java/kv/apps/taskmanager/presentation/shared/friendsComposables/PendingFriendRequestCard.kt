@@ -55,7 +55,6 @@ fun PendingFriendRequestCard(
                 )
             }
 
-            // Reject Button
             IconButton(
                 onClick = { showRejectDialog = true }
             ) {

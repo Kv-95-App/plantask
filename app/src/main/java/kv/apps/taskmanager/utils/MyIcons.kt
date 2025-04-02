@@ -12,6 +12,6 @@ object MyIcons {
 
     @Composable
     fun friends(): ImageVector {
-        return ImageVector.vectorResource(id = R.drawable.friends) // Correct usage
+        return ImageVector.vectorResource(id = R.drawable.friends)
     }
 }

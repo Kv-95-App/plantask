@@ -46,10 +46,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import kv.apps.taskmanager.R
 import kv.apps.taskmanager.domain.model.Friend
+import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
@@ -64,21 +64,18 @@ import kv.apps.taskmanager.theme.mainAppColor
 fun ProjectDetailScreen(
     navController: NavController,
     projectId: String,
-    authViewModel: AuthViewModel = hiltViewModel()
+    projectViewModel: ProjectViewModel,
+    taskViewModel: TaskViewModel,
+    userFriendsViewModel: UserFriendsViewModel,
+    authViewModel: AuthViewModel
 ) {
-    val projectViewModel: ProjectViewModel = hiltViewModel()
-    val taskViewModel: TaskViewModel = hiltViewModel()
-    val userFriendsViewModel: UserFriendsViewModel = hiltViewModel()
 
-    // Project state
     val project by projectViewModel.selectedProject.collectAsState()
     val loading by projectViewModel.loading.collectAsState()
     val error by projectViewModel.error.collectAsState()
 
-    // Tasks state
     val tasks by taskViewModel.tasks.collectAsState()
 
-    // Friends state
     val friendsState by userFriendsViewModel.friendsState.collectAsState()
 
     var hasLoaded by remember { mutableStateOf(false) }
@@ -86,22 +83,18 @@ fun ProjectDetailScreen(
         derivedStateOf { hasLoaded && project == null }
     }
 
-    // State for showing the add team members dialog
     var showAddTeamMembersDialog by remember { mutableStateOf(false) }
 
-    // Fetch project, tasks, and friends on launch
+    val sendInvitationState by projectViewModel.invitationActionState.collectAsState()
+
     LaunchedEffect(projectId, authViewModel.currentUserId.value) {
         val userId = authViewModel.currentUserId.value
         if (userId == null) return@LaunchedEffect
 
-        // Fetch project and tasks first
         projectViewModel.getProjectById(projectId)
         taskViewModel.loadTasksForProject(projectId)
-
-        // Mark as loaded
         hasLoaded = true
 
-        // Fetch friends after the main content is displayed
         userFriendsViewModel.getFriends(userId)
     }
 
@@ -109,7 +102,6 @@ fun ProjectDetailScreen(
         topBar = {
             TopBar(
                 navController = navController,
-                authViewModel = authViewModel,
                 onProfileClicked = { },
                 onLogoutClicked = {
                     authViewModel.logout()
@@ -137,24 +129,26 @@ fun ProjectDetailScreen(
                 ) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
+
                 error != null -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "Error: $error", color = Color.Red)
                 }
+
                 showProjectNotFound -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "Project not found", color = Color.Red)
                 }
+
                 project != null -> Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Project Title
                     Text(
                         text = project!!.title,
                         style = MaterialTheme.typography.headlineLarge,
@@ -165,14 +159,12 @@ fun ProjectDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Due Date and Team Members Side by Side
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Due Date Section
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.weight(1f)
@@ -208,7 +200,6 @@ fun ProjectDetailScreen(
                             )
                         }
 
-                        // Team Members Section
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.weight(1f)
@@ -235,8 +226,7 @@ fun ProjectDetailScreen(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Calculate total team members (including the creator)
-                            val totalMembers = project!!.teamMembers.size + 1 // +1 for the creator
+                            val totalMembers = project!!.teamMembers.size + 1
                             val memberText =
                                 if (totalMembers == 1) "1 Member" else "$totalMembers Members"
 
@@ -250,7 +240,6 @@ fun ProjectDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Project Description
                     Text(
                         text = "Project Details",
                         style = MaterialTheme.typography.titleLarge,
@@ -268,7 +257,6 @@ fun ProjectDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Tasks Section
                     Text(
                         text = "Tasks",
                         style = MaterialTheme.typography.titleLarge,
@@ -303,10 +291,8 @@ fun ProjectDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Add Task Button
                     Button(
                         onClick = {
-                            // Handle adding a new task
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -318,7 +304,6 @@ fun ProjectDetailScreen(
                         Text(text = "Add Task", color = Color.Black)
                     }
 
-                    // Add Team Members Button
                     Button(
                         onClick = {
                             showAddTeamMembersDialog = true
@@ -337,18 +322,46 @@ fun ProjectDetailScreen(
         }
     }
 
-    // Add Team Members Dialog
+
     if (showAddTeamMembersDialog) {
         AddTeamMembersDialog(
             showDialog = showAddTeamMembersDialog,
-            onDismiss = { showAddTeamMembersDialog = false },
-            friends = friendsState?.getOrNull() ?: emptyList(),
-            onAddTeamMember = { friendId ->
-                projectViewModel.addTeamMembersToProject(projectId, listOf(friendId))
+            onDismiss = {
                 showAddTeamMembersDialog = false
+                projectViewModel.clearInvitationActionState()
+            },
+            friends = friendsState?.getOrNull() ?: emptyList(),
+            currentUserId = authViewModel.currentUserId.value ?: "",
+            projectId = projectId,
+            projectViewModel = projectViewModel,
+            onAddTeamMember = { friendId ->
+                val invitation = ProjectInvitation(
+                    fromUserId = authViewModel.currentUserId.value ?: "",
+                    toUserId = friendId,
+                    projectId = projectId
+                )
+                projectViewModel.sendProjectInvitation(invitation)
             }
         )
     }
+    sendInvitationState?.let { result ->
+        AlertDialog(
+            onDismissRequest = { projectViewModel.clearInvitationActionState() },
+            title = { Text("Invitation Status") },
+            text = {
+                Text(
+                    if (result.isSuccess) "Invitation sent successfully!"
+                    else "Failed to send invitation: ${result.exceptionOrNull()?.message}"
+                )
+            },
+            confirmButton = {
+                Button(onClick = { projectViewModel.clearInvitationActionState() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
 }
 
 @Composable
@@ -356,6 +369,9 @@ fun AddTeamMembersDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
     friends: List<Friend>,
+    currentUserId: String,
+    projectId: String,
+    projectViewModel: ProjectViewModel,
     onAddTeamMember: (String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -363,10 +379,9 @@ fun AddTeamMembersDialog(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text(text = "Add Team Members") },
+            title = { Text(text = "Invite Team Members") },
             text = {
                 Column {
-                    // Search Bar
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -376,11 +391,12 @@ fun AddTeamMembersDialog(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Filtered Friends List
                     LazyColumn {
-                        val filteredFriends = friends.filter {
-                            it.friendName.contains(searchQuery, ignoreCase = true) ||
-                                    it.friendEmail.contains(searchQuery, ignoreCase = true)
+                        val filteredFriends = friends.filter { friend ->
+                            friend.friendId != currentUserId && (
+                                    friend.friendName.contains(searchQuery, ignoreCase = true) ||
+                                            friend.friendEmail.contains(searchQuery, ignoreCase = true)
+                                    )
                         }
 
                         items(filteredFriends) { friend ->

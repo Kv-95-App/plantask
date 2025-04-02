@@ -40,8 +40,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTaskRemoteDataSource(
-        firestore: FirebaseFirestore,
-        firebaseAuth: FirebaseAuth
+        firestore: FirebaseFirestore
     ): TaskRemoteDataSource {
         return TaskRemoteDataSource(firestore)
     }

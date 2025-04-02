@@ -3,11 +3,34 @@ package kv.apps.taskmanager.presentation.screens.projectScreens
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,9 +38,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import kv.apps.taskmanager.domain.model.Project
+import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
@@ -26,14 +49,15 @@ import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Calendar
+import java.util.UUID
 
 @Composable
 fun AddProjectScreen(
     navController: NavController,
-    projectViewModel: ProjectViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel(),
-    userFriendsViewModel: UserFriendsViewModel = hiltViewModel() // Add UserFriendsViewModel
+    projectViewModel: ProjectViewModel,
+    authViewModel: AuthViewModel,
+    userFriendsViewModel: UserFriendsViewModel
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -41,16 +65,14 @@ fun AddProjectScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     var isPastDate by remember { mutableStateOf(false) }
-    var selectedFriends by remember { mutableStateOf<Set<String>>(emptySet()) } // Track selected friends
+    var selectedFriends by remember { mutableStateOf<Set<String>>(emptySet()) }
     val focusManager = LocalFocusManager.current
 
-    // Fetch the current user's friend list
     val friendsState by userFriendsViewModel.friendsState.collectAsState()
     val friends = remember(friendsState) {
         friendsState?.getOrNull() ?: emptyList()
     }
 
-    // Fetch friends on launch
     LaunchedEffect(Unit) {
         val currentUserId = authViewModel.user.value?.uid
         if (currentUserId != null) {
@@ -91,7 +113,6 @@ fun AddProjectScreen(
         topBar = {
             TopBar(
                 navController = navController,
-                authViewModel = authViewModel,
                 onProfileClicked = { },
                 onLogoutClicked = {
                     authViewModel.logout()
@@ -111,9 +132,8 @@ fun AddProjectScreen(
                 .background(backgroundColor)
                 .padding(paddingValues)
                 .padding(16.dp)
-                .clickable { focusManager.clearFocus() } // Clear focus on click outside
+                .clickable { focusManager.clearFocus() }
         ) {
-            // Title Field
             Text("Project Title", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = Color.White)
             TextField(
                 value = title,
@@ -139,7 +159,6 @@ fun AddProjectScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Description Field
             Text("Project Description", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = Color.White)
             TextField(
                 value = description,
@@ -168,7 +187,6 @@ fun AddProjectScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Due Date Field
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -207,9 +225,8 @@ fun AddProjectScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Team Members Section
             Text(
-                text = "Add Team Members",
+                text = "Invite Team Members",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
                 color = Color.White
             )
@@ -257,29 +274,39 @@ fun AddProjectScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Save Button
             Button(
                 onClick = {
                     if (title.isBlank() || description.isBlank() || dueDate == null || isPastDate) {
                         showError = true
                     } else {
+                        val currentUserId = authViewModel.user.value?.uid ?: ""
+                        val projectId = UUID.randomUUID().toString()
+
                         val newProject = Project(
-                            id = UUID.randomUUID().toString(),
+                            id = projectId,
                             title = title,
                             description = description,
                             dueDate = dueDate!!,
                             isCompleted = false,
-                            createdBy = authViewModel.user.value?.uid ?: "",
-                            teamMembers = selectedFriends.toList() // Add selected friends as team members
+                            createdBy = currentUserId,
+                            teamMembers = listOf(currentUserId)
                         )
                         projectViewModel.createProject(newProject)
+
+                        selectedFriends.forEach { friendId ->
+                            val invitation = ProjectInvitation(
+                                invitationId = "inv_${friendId}_${System.currentTimeMillis()}",
+                                fromUserId = currentUserId,
+                                toUserId = friendId,
+                                projectId = projectId,
+                                status = "Pending"
+                            )
+                            projectViewModel.sendProjectInvitation(invitation)
+                        }
+
                         navController.popBackStack()
                     }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = mainAppColor
-                ),
-                modifier = Modifier.fillMaxWidth()
+                }
             ) {
                 Text("Save Project", color = Color.Black)
             }

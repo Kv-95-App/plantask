@@ -5,7 +5,7 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class AuthRemoteDataSource @Inject constructor(
-    val firebaseAuth: FirebaseAuth // Expose FirebaseAuth instance
+    val firebaseAuth: FirebaseAuth
 ) {
 
     suspend fun signUpWithEmailAndPassword(email: String, password: String) {
@@ -20,7 +20,7 @@ class AuthRemoteDataSource @Inject constructor(
         firebaseAuth.sendPasswordResetEmail(email).await()
     }
 
-    fun signOut() {
+    fun logout() {
         firebaseAuth.signOut()
     }
 }

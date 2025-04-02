@@ -39,7 +39,7 @@ object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideProjectUseCase(
+    fun provideProjectUseCases(
         projectRepository: ProjectRepository
     ): ProjectUseCases {
         return ProjectUseCases(projectRepository)
@@ -125,6 +125,4 @@ object UseCaseModule {
     ): FetchUserDetailsUseCase {
         return FetchUserDetailsUseCase(userRepository)
     }
-
-
 }

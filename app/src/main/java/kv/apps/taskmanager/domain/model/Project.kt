@@ -7,5 +7,5 @@ data class Project (
     val createdBy: String = "",
     val isCompleted: Boolean = false,
     val dueDate: String = "",
-    val teamMembers: List<String> = emptyList()
+    val teamMembers: List<String> = emptyList(),
 )

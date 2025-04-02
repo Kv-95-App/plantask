@@ -15,99 +15,127 @@ import kv.apps.taskmanager.presentation.screens.projectScreens.AddTaskScreen
 import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectDetailScreen
 import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectListScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.GetStartedScreen
+import kv.apps.taskmanager.presentation.screens.utilScreens.NotificationsScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.SplashScreen
 import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.TaskViewModel
+import kv.apps.taskmanager.presentation.viewmodel.UserFriendsViewModel
 
 @Composable
 fun NavGraph(
     navController: NavHostController,
     startDestination: String,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    taskViewModel: TaskViewModel = hiltViewModel(),
+    userFriendsViewModel: UserFriendsViewModel = hiltViewModel(),
+    projectViewModel: ProjectViewModel = hiltViewModel()
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        // Get Started Screen
         composable(route = Screen.GetStarted.route) {
             GetStartedScreen(navController)
         }
 
-        // Project List Screen
         composable(route = Screen.ProjectList.route) {
             ProjectListScreen(
                 navController = navController,
-                projectViewModel = hiltViewModel(),
-                taskViewModel = hiltViewModel(),
-                onAddProjectClicked = {
-                    navController.navigate(Screen.AddProject.route)
-                },
-                onProjectSelected = { projectId ->
-                    navController.navigate(Screen.ProjectDetail.route + "/$projectId")
-                }
+                projectViewModel = projectViewModel,
+                taskViewModel = taskViewModel,
+                authViewModel = authViewModel,
+                onAddProjectClicked = { navController.navigate(Screen.AddProject.route) },
+
+                )
+        }
+
+        composable(route = Screen.AddProject.route) {
+            AddProjectScreen(
+                navController = navController,
+                projectViewModel = projectViewModel,
+                authViewModel = authViewModel,
+                userFriendsViewModel = userFriendsViewModel
             )
         }
 
-        // Add Project Screen
-        composable(route = Screen.AddProject.route) {
-            AddProjectScreen(navController)
-        }
-
-        // Project Detail Screen
         composable(route = Screen.ProjectDetail.route) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
-            ProjectDetailScreen(navController, projectId)
+            ProjectDetailScreen(
+                navController = navController,
+                projectId = projectId,
+                taskViewModel = taskViewModel,
+                projectViewModel = projectViewModel,
+                userFriendsViewModel = userFriendsViewModel,
+                authViewModel = authViewModel
+            )
         }
 
-        // Login Screen
         composable(route = Screen.Login.route) {
-            LoginScreen(navController, onLoginSuccess = {
-                navController.navigate(Screen.ProjectList.route) {
-                    popUpTo(Screen.Login.route) { inclusive = true }
-                }
-            })
+            LoginScreen(
+                navController = navController,
+                onLoginSuccess = {
+                    navController.navigate(Screen.ProjectList.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                authViewModel = authViewModel
+            )
         }
 
-        // Register Screen
         composable(route = Screen.Register.route) {
-            RegisterScreen(navController, onRegisterSuccess = {
-                navController.navigate(Screen.ProjectList.route) {
-                    popUpTo(Screen.Register.route) { inclusive = true }
-                }
-            })
+            RegisterScreen(
+                navController = navController,
+                onRegisterSuccess = {
+                    navController.navigate(Screen.ProjectList.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                    }
+                },
+                authViewModel = authViewModel
+            )
         }
 
-        // Forgot Password Screen
         composable(route = Screen.ForgotPassword.route) {
-            ForgotPasswordScreen(navController)
+            ForgotPasswordScreen(navController = navController, authViewModel = authViewModel)
         }
 
-        // Splash Screen
+
         composable(route = Screen.SplashScreen.route) {
-            SplashScreen(navController = navController)
+            SplashScreen(
+                navController = navController,
+                authViewModel = authViewModel
+            )
         }
 
-        // Friends Screen
         composable(route = Screen.Friends.route) {
             FriendsScreen(
                 navController = navController,
-                userFriendsViewModel = hiltViewModel(),
+                userFriendsViewModel = userFriendsViewModel,
                 authViewModel = authViewModel
             )
         }
 
-        // Add Friend Screen
         composable(route = Screen.AddFriend.route) {
             AddFriendScreen(
                 navController = navController,
-                userFriendsViewModel = hiltViewModel(),
+                userFriendsViewModel = userFriendsViewModel,
                 authViewModel = authViewModel
             )
         }
 
-        // Add Task Screen
         composable(route = Screen.AddTask.route) {
-            AddTaskScreen(navController)
+            AddTaskScreen(
+                navController = navController,
+                projectViewModel = projectViewModel
+            )
+        }
+
+        composable(route = Screen.Notifications.route) {
+            NotificationsScreen(
+                navController = navController,
+                authViewModel = authViewModel,
+                projectViewModel = projectViewModel
+            )
         }
     }
 }

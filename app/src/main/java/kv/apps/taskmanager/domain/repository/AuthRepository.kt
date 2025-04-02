@@ -1,5 +1,6 @@
 package kv.apps.taskmanager.domain.repository
 
+import kotlinx.coroutines.flow.Flow
 import kv.apps.taskmanager.domain.model.User
 
 
@@ -11,7 +12,9 @@ interface AuthRepository {
         birthday: String,
         email: String,
         password: String
-    ): Result<Unit>
+    ): Result<User>
     suspend fun logout()
     suspend fun resetPassword(email: String): Result<Unit>
+    suspend fun getCurrentUserId(): String?
+    suspend fun observeAuthState(): Flow<User?>
 }

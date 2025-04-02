@@ -10,35 +10,59 @@ class ProjectRepositoryImpl @Inject constructor(
     private val projectRemoteDataSource: ProjectRemoteDataSource
 ) : ProjectRepository {
 
-    override suspend fun getAllProjectsForUser(): List<Project> {
-        return projectRemoteDataSource.getAllProjectsForUser()
-    }
+    override suspend fun getAllProjectsForUser(): Result<List<Project>> = runCatching {
+        projectRemoteDataSource.getAllProjectsForUser()
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { Result.failure(Exception("Failed to get user projects: ${it.message}")) }
+    )
 
-    override suspend fun getAllProjects(): List<Project> {
-        return projectRemoteDataSource.getAllProjects()
-    }
+    override suspend fun getAllProjects(): Result<List<Project>> = runCatching {
+        projectRemoteDataSource.getAllProjects()
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { Result.failure(Exception("Failed to get all projects: ${it.message}")) }
+    )
 
-    override suspend fun createProject(project: Project): String {
-        return projectRemoteDataSource.createProject(project)
-    }
+    override suspend fun createProject(project: Project): Result<String> = runCatching {
+        projectRemoteDataSource.createProject(project)
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { Result.failure(Exception("Failed to create project: ${it.message}")) }
+    )
 
-    override suspend fun deleteProject(projectId: String) {
+    override suspend fun deleteProject(projectId: String): Result<Unit> = runCatching {
         projectRemoteDataSource.deleteProject(projectId)
-    }
+    }.fold(
+        onSuccess = { Result.success(Unit) },
+        onFailure = { Result.failure(Exception("Failed to delete project: ${it.message}")) }
+    )
 
-    override suspend fun updateProject(projectId: String, project: Project) {
+    override suspend fun updateProject(projectId: String, project: Project): Result<Unit> = runCatching {
         projectRemoteDataSource.updateProject(projectId, project)
-    }
+    }.fold(
+        onSuccess = { Result.success(Unit) },
+        onFailure = { Result.failure(Exception("Failed to update project: ${it.message}")) }
+    )
 
-    override suspend fun getProjectById(projectId: String): Project? {
-        return projectRemoteDataSource.getProjectById(projectId)
-    }
+    override suspend fun getProjectById(projectId: String): Result<Project> = runCatching {
+        projectRemoteDataSource.getProjectById(projectId) ?: throw Exception("Project not found")
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { Result.failure(Exception("Failed to get project: ${it.message}")) }
+    )
 
-    override suspend fun addTeamMembersToProject(projectId: String, teamMemberIds: List<String>): Result<Unit> {
+    override suspend fun addTeamMembersToProject(
+        projectId: String,
+        teamMemberIds: List<String>
+    ): Result<Unit> {
         return projectRemoteDataSource.addTeamMembersToProject(projectId, teamMemberIds)
     }
 
-    override suspend fun removeTeamMembersFromProject(projectId: String, teamMemberId: String): Result<Unit> {
+    override suspend fun removeTeamMembersFromProject(
+        projectId: String,
+        teamMemberId: String
+    ): Result<Unit> {
         return projectRemoteDataSource.removeTeamMembersFromProject(projectId, teamMemberId)
     }
 
@@ -51,16 +75,16 @@ class ProjectRepositoryImpl @Inject constructor(
             projectRemoteDataSource.sendProjectInvitation(invitation)
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(Exception("Failed to send project invitation: ${e.message}"))
+            Result.failure(Exception("Failed to send invitation: ${e.message}"))
         }
     }
 
-    override suspend fun getPendingProjectInvitations(toUserId: String): Result<List<ProjectInvitation>> {
+    override suspend fun getPendingProjectInvitations(userId: String): Result<List<ProjectInvitation>> {
         return try {
-            val invitations = projectRemoteDataSource.getPendingProjectInvitations(toUserId)
+            val invitations = projectRemoteDataSource.getPendingProjectInvitations(userId)
             Result.success(invitations)
         } catch (e: Exception) {
-            Result.failure(Exception("Failed to fetch pending project invitations: ${e.message}"))
+            Result.failure(Exception("Failed to get invitations: ${e.message}"))
         }
     }
 
@@ -69,7 +93,12 @@ class ProjectRepositoryImpl @Inject constructor(
         projectId: String,
         userId: String
     ): Result<Unit> {
-        return projectRemoteDataSource.acceptInvitation(invitationId, projectId, userId)
+        return try {
+            projectRemoteDataSource.acceptInvitation(invitationId, projectId, userId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to accept invitation: ${e.message}"))
+        }
     }
 
     override suspend fun rejectInvitation(
@@ -77,6 +106,11 @@ class ProjectRepositoryImpl @Inject constructor(
         projectId: String,
         userId: String
     ): Result<Unit> {
-        return projectRemoteDataSource.rejectInvitation(invitationId, projectId, userId)
+        return try {
+            projectRemoteDataSource.rejectInvitation(invitationId, projectId, userId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to reject invitation: ${e.message}"))
+        }
     }
 }

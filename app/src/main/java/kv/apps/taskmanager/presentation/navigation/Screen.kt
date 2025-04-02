@@ -14,4 +14,5 @@ sealed class Screen(val route: String) {
     object Friends : Screen("friends")
     object AddFriend : Screen("add_friend")
     object AddTask : Screen("add_task")
+    object Notifications : Screen("notifications")
 }

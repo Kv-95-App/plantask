@@ -82,6 +82,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
                     throw exception
                 }
             }
-            .map { preferences -> preferences[KEEP_LOGGED_IN_KEY] ?: false }
+            .map { preferences -> preferences[KEEP_LOGGED_IN_KEY] == true }
     }
 }

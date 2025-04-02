@@ -17,35 +17,27 @@ class TaskViewModel @Inject constructor(
     private val taskUseCases: TaskUseCases
 ) : ViewModel() {
 
-    // State for tasks in a project
     private val _tasks = MutableStateFlow<List<Task>>(emptyList())
     val tasks: StateFlow<List<Task>> = _tasks
 
-    // State for selected tasks (filtered by due date)
     private val _selectedTasks = MutableStateFlow<List<Task>>(emptyList())
     val selectedTasks: StateFlow<List<Task>> = _selectedTasks
 
-    // State for selected date (used for filtering tasks)
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate
 
-    // State for loading
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
 
-    // State for error type
     private val _errorType = MutableStateFlow<TaskErrorType?>(null)
     val errorType: StateFlow<TaskErrorType?> = _errorType
 
-    // State for error message
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    // State for the selected task
     private val _selectedTask = MutableStateFlow<Task?>(null)
     val selectedTask: StateFlow<Task?> = _selectedTask
 
-    // Load tasks for a specific project
     fun loadTasksForProject(projectId: String) {
         _loading.value = true
         viewModelScope.launch {
@@ -63,7 +55,6 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    // Add a task to a project
     fun addTaskToProject(projectId: String, task: Task) {
         viewModelScope.launch {
             try {
@@ -78,7 +69,6 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    // Update a task in a project
     fun updateTaskInProject(projectId: String, task: Task) {
         viewModelScope.launch {
             try {
@@ -94,7 +84,6 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    // Delete a task from a project
     fun deleteTaskFromProject(projectId: String, taskId: String) {
         viewModelScope.launch {
             try {
@@ -109,7 +98,6 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    // Fetch a specific task by ID from a project
     fun fetchTaskByIdFromProject(projectId: String, taskId: String) {
         _loading.value = true
         viewModelScope.launch {
@@ -127,7 +115,6 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    // Filter tasks by due date for a specific project
     private fun filterTasksByDueDate(projectId: String, date: LocalDate) {
         viewModelScope.launch {
             try {
@@ -141,13 +128,11 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    // Update the selected date and filter tasks
     fun selectDate(projectId: String, date: LocalDate) {
         _selectedDate.value = date
         filterTasksByDueDate(projectId, date)
     }
 
-    // Helper function to refresh the task list
     private fun refreshTasks(projectId: String) {
         loadTasksForProject(projectId)
     }

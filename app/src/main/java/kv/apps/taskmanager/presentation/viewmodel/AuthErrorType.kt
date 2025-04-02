@@ -5,5 +5,6 @@ enum class AuthErrorType {
     REGISTER_ERROR,
     RESET_PASSWORD_ERROR,
     FETCH_USER_ERROR,
-    SESSION_ERROR
+    SESSION_ERROR,
+    LOGOUT_ERROR
 }

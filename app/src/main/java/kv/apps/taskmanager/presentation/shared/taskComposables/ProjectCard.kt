@@ -50,10 +50,8 @@ fun ProjectCard(
             .fillMaxWidth()
             .padding(8.dp)
             .clickable {
-                if (project.id != null) {
+                if (true) {
                     navController.navigate(Screen.ProjectDetail.createRoute(project.id))
-                } else {
-                    println("Project ID is null") // Debug log
                 }
             },
         shape = RoundedCornerShape(16.dp),
@@ -68,7 +66,6 @@ fun ProjectCard(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Project Title
                 Text(
                     text = project.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -77,7 +74,6 @@ fun ProjectCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Project Description
                 Text(
                     text = project.description,
                     style = MaterialTheme.typography.bodyMedium,
@@ -88,7 +84,6 @@ fun ProjectCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Due Date
                 Text(
                     text = "Due: ${project.dueDate}",
                     style = MaterialTheme.typography.bodySmall,
@@ -97,13 +92,11 @@ fun ProjectCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Delete Button
                     IconButton(onClick = { showDeleteDialog.value = true }) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -112,7 +105,6 @@ fun ProjectCard(
                         )
                     }
 
-                    // Tick Button (Mark as Complete)
                     IconButton(onClick = onMarkComplete) {
                         Icon(
                             imageVector = Icons.Default.Check,
@@ -125,7 +117,6 @@ fun ProjectCard(
         }
     }
 
-    // Delete Confirmation Dialog
     if (showDeleteDialog.value) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog.value = false },

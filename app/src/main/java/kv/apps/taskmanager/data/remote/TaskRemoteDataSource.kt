@@ -1,5 +1,6 @@
 package kv.apps.taskmanager.data.remote
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +9,8 @@ import kotlinx.coroutines.tasks.await
 import kv.apps.taskmanager.domain.model.Task
 import java.time.LocalDate
 import javax.inject.Inject
+
+
 
 class TaskRemoteDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
@@ -24,29 +27,32 @@ class TaskRemoteDataSource @Inject constructor(
                 .await()
 
             for (doc in snapshot.documents) {
-                doc.data?.let {
-                    tasks.add(
-                        Task(
-                            id = doc.id,
-                            assignedTo = it["assignedTo"] as? List<String> ?: emptyList(),
-                            isCompleted = it["isCompleted"] as? Boolean ?: false,
-                            title = it["title"] as? String ?: "",
-                            taskDetails = it["taskDetails"] as? String ?: "",
-                            dueDate = it["dueDate"] as? String ?: ""
-                        )
+                val data = doc.data ?: continue
+
+                val assignedToList = (data["assignedTo"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+                tasks.add(
+                    Task(
+                        id = doc.id,
+                        assignedTo = assignedToList,
+                        isCompleted = data["isCompleted"] as? Boolean == true,
+                        title = data["title"] as? String ?: "",
+                        taskDetails = data["taskDetails"] as? String ?: "",
+                        dueDate = data["dueDate"] as? String ?: ""
                     )
-                }
+                )
             }
         } catch (e: Exception) {
-            throw Exception("Failed to fetch tasks: ${e.message}")
+            Log.e("Firestore", "Failed to fetch tasks", e)
         }
 
-        return@withContext tasks
+        tasks
     }
 
-    suspend fun addTaskToProject(projectId: String, task: Task) = withContext(Dispatchers.IO) {
+
+    suspend fun addTaskToProject(projectId: String, task: Task): Unit = withContext(Dispatchers.IO) {
         try {
-            val data = mapOf(
+            val data: Map<String, Any?> = mapOf(
                 "title" to task.title,
                 "taskDetails" to task.taskDetails,
                 "dueDate" to task.dueDate,
@@ -60,11 +66,12 @@ class TaskRemoteDataSource @Inject constructor(
                 .add(data)
                 .await()
         } catch (e: Exception) {
-            throw Exception("Failed to add task: ${e.message}")
+            Log.e("Firestore", "Failed to add task", e)
         }
     }
 
-    suspend fun updateTaskInProject(projectId: String, task: Task) = withContext(Dispatchers.IO) {
+
+    suspend fun updateTaskInProject(projectId: String, task: Task): Unit = withContext(Dispatchers.IO) {
         try {
             val data = mapOf(
                 "title" to task.title,
@@ -85,7 +92,7 @@ class TaskRemoteDataSource @Inject constructor(
         }
     }
 
-    suspend fun deleteTaskFromProject(projectId: String, taskId: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteTaskFromProject(projectId: String, taskId: String): Unit = withContext(Dispatchers.IO) {
         try {
             firestore.collection("projects")
                 .document(projectId)
@@ -107,24 +114,26 @@ class TaskRemoteDataSource @Inject constructor(
                 .get()
                 .await()
 
-            return@withContext snapshot.data?.let {
-                Task(
-                    id = snapshot.id,
-                    assignedTo = it["assignedTo"] as? List<String> ?: emptyList(),
-                    isCompleted = it["isCompleted"] as? Boolean ?: false,
-                    title = it["title"] as? String ?: "",
-                    taskDetails = it["taskDetails"] as? String ?: "",
-                    dueDate = it["dueDate"] as? String ?: ""
-                )
-            }
+            val data = snapshot.data ?: return@withContext null
+
+            val assignedToList = (data["assignedTo"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+            Task(
+                id = snapshot.id,
+                assignedTo = assignedToList,
+                isCompleted = data["isCompleted"] as? Boolean == true,
+                title = data["title"] as? String ?: "",
+                taskDetails = data["taskDetails"] as? String ?: "",
+                dueDate = data["dueDate"] as? String ?: ""
+            )
         } catch (e: Exception) {
-            throw Exception("Failed to fetch task: ${e.message}")
+            Log.e("Firestore", "Failed to fetch task", e)
+            null
         }
     }
 
-    suspend fun getTasksSortedByDueDate(projectId: String, ascending: Boolean): List<Task> = withContext(Dispatchers.IO) {
-        val tasks = mutableListOf<Task>()
 
+    suspend fun getTasksSortedByDueDate(projectId: String, ascending: Boolean): List<Task> = withContext(Dispatchers.IO) {
         try {
             val query = firestore.collection("projects")
                 .document(projectId)
@@ -133,32 +142,31 @@ class TaskRemoteDataSource @Inject constructor(
 
             val snapshot = query.get().await()
 
-            for (doc in snapshot.documents) {
-                doc.data?.let {
-                    tasks.add(
-                        Task(
-                            id = doc.id,
-                            assignedTo = it["assignedTo"] as? List<String> ?: emptyList(),
-                            isCompleted = it["isCompleted"] as? Boolean ?: false,
-                            title = it["title"] as? String ?: "",
-                            taskDetails = it["taskDetails"] as? String ?: "",
-                            dueDate = it["dueDate"] as? String ?: ""
-                        )
-                    )
-                }
+            snapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+
+                val assignedToList = (data["assignedTo"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+                Task(
+                    id = doc.id,
+                    assignedTo = assignedToList,
+                    isCompleted = data["isCompleted"] == true,
+                    title = data["title"] as? String ?: "",
+                    taskDetails = data["taskDetails"] as? String ?: "",
+                    dueDate = data["dueDate"] as? String ?: ""
+                )
             }
         } catch (e: Exception) {
-            throw Exception("Failed to fetch sorted tasks: ${e.message}")
+            Log.e("Firestore", "Failed to fetch sorted tasks", e)
+            emptyList()
         }
-
-        return@withContext tasks
     }
 
-    suspend fun filterTasksByDueDate(projectId: String, date: LocalDate): List<Task> = withContext(Dispatchers.IO) {
-        val tasks = mutableListOf<Task>()
-        val formattedDate = date.toString()
 
+    suspend fun filterTasksByDueDate(projectId: String, date: LocalDate): List<Task> = withContext(Dispatchers.IO) {
         try {
+            val formattedDate = date.toString()
+
             val snapshot = firestore.collection("projects")
                 .document(projectId)
                 .collection("tasks")
@@ -166,24 +174,24 @@ class TaskRemoteDataSource @Inject constructor(
                 .get()
                 .await()
 
-            for (doc in snapshot.documents) {
-                doc.data?.let {
-                    tasks.add(
-                        Task(
-                            id = doc.id,
-                            assignedTo = it["assignedTo"] as? List<String> ?: emptyList(),
-                            isCompleted = it["isCompleted"] as? Boolean ?: false,
-                            title = it["title"] as? String ?: "",
-                            taskDetails = it["taskDetails"] as? String ?: "",
-                            dueDate = it["dueDate"] as? String ?: ""
-                        )
-                    )
-                }
+            snapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+
+                val assignedToList = (data["assignedTo"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+                Task(
+                    id = doc.id,
+                    assignedTo = assignedToList,
+                    isCompleted = data["isCompleted"] == true, // Direct boolean check
+                    title = data["title"] as? String ?: "",
+                    taskDetails = data["taskDetails"] as? String ?: "",
+                    dueDate = data["dueDate"] as? String ?: ""
+                )
             }
         } catch (e: Exception) {
-            throw Exception("Failed to filter tasks by date: ${e.message}")
+            Log.e("Firestore", "Failed to filter tasks by date", e)
+            emptyList()
         }
-
-        return@withContext tasks
     }
+
 }

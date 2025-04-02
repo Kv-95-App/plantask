@@ -8,7 +8,7 @@ import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
 @Composable
 fun AddTaskScreen(
     navController: NavController,
-    projectViewModel: ProjectViewModel = hiltViewModel()
+    projectViewModel: ProjectViewModel
 ) {
 
 

@@ -8,31 +8,106 @@ import javax.inject.Inject
 class ProjectUseCases @Inject constructor(
     private val repository: ProjectRepository
 ) {
-    suspend fun getAllProjectsForUser() = repository.getAllProjectsForUser()
+    suspend fun getAllProjectsForUser(): Result<List<Project>> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.getAllProjectsForUser() },
+            errorPrefix = "Failed to load user projects"
+        )
 
-    suspend fun getAllProjects() = repository.getAllProjects()
+    suspend fun getAllProjects(): Result<List<Project>> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.getAllProjects() },
+            errorPrefix = "Failed to load all projects"
+        )
 
-    suspend fun createProject(project: Project) = repository.createProject(project)
+    suspend fun createProject(project: Project): Result<String> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.createProject(project) },
+            errorPrefix = "Failed to create project"
+        )
 
-    suspend fun updateProject(projectId: String, project: Project) = repository.updateProject(projectId, project)
+    suspend fun updateProject(projectId: String, project: Project): Result<Unit> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.updateProject(projectId, project) },
+            errorPrefix = "Failed to update project"
+        )
 
-    suspend fun deleteProject(projectId: String) = repository.deleteProject(projectId)
+    suspend fun deleteProject(projectId: String): Result<Unit> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.deleteProject(projectId) },
+            errorPrefix = "Failed to delete project"
+        )
 
-    suspend fun getProjectById(projectId: String) = repository.getProjectById(projectId)
+    suspend fun getProjectById(projectId: String): Result<Project> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.getProjectById(projectId) },
+            errorPrefix = "Failed to get project"
+        )
 
-    suspend fun addTeamMembersToProject(projectId: String, teamMembers: List<String>) = repository.addTeamMembersToProject(projectId, teamMembers)
-
-    suspend fun removeTeamMembersFromProject(projectId: String, teamMembersIds: List<String>) = repository.removeTeamMembersFromProject(projectId,
-        teamMembersIds.toString()
+    suspend fun addTeamMembersToProject(
+        projectId: String,
+        teamMemberIds: List<String>
+    ): Result<Unit> = wrapRepositoryCall(
+        repositoryCall = { repository.addTeamMembersToProject(projectId, teamMemberIds) },
+        errorPrefix = "Failed to add team members"
     )
 
-    suspend fun getTeamMembersForProject(projectId: String) = repository.getTeamMembersForProject(projectId)
+    suspend fun removeTeamMembersFromProject(
+        projectId: String,
+        teamMemberId: String
+    ): Result<Unit> = wrapRepositoryCall(
+        repositoryCall = { repository.removeTeamMembersFromProject(projectId, teamMemberId) },
+        errorPrefix = "Failed to remove team member"
+    )
 
-    suspend fun sendProjectInvitation(invitation: ProjectInvitation) = repository.sendProjectInvitation(invitation)
+    suspend fun getTeamMembersForProject(projectId: String): Result<List<String>> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.getTeamMembersForProject(projectId) },
+            errorPrefix = "Failed to get team members"
+        )
 
-    suspend fun getPendingProjectInvitations(toUserId: String) = repository.getPendingProjectInvitations(toUserId)
+    suspend fun sendProjectInvitation(invitation: ProjectInvitation): Result<Unit> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.sendProjectInvitation(invitation) },
+            errorPrefix = "Failed to send invitation"
+        )
 
-    suspend fun acceptInvitation(invitationId: String, projectId: String, userId: String) = repository.acceptInvitation(invitationId, projectId, userId)
+    suspend fun getPendingProjectInvitations(toUserId: String): Result<List<ProjectInvitation>> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.getPendingProjectInvitations(toUserId) },
+            errorPrefix = "Failed to get pending invitations"
+        )
 
-    suspend fun rejectInvitation(invitationId: String, projectId: String, userId: String) = repository.rejectInvitation(invitationId, projectId, userId)
+    suspend fun acceptInvitation(
+        invitationId: String,
+        projectId: String,
+        userId: String
+    ): Result<Unit> = wrapRepositoryCall(
+        repositoryCall = { repository.acceptInvitation(invitationId, projectId, userId) },
+        errorPrefix = "Failed to accept invitation"
+    )
+
+    suspend fun rejectInvitation(
+        invitationId: String,
+        projectId: String,
+        userId: String
+    ): Result<Unit> = wrapRepositoryCall(
+        repositoryCall = { repository.rejectInvitation(invitationId, projectId, userId) },
+        errorPrefix = "Failed to reject invitation"
+    )
+
+    private suspend fun <T> wrapRepositoryCall(
+        repositoryCall: suspend () -> Result<T>,
+        errorPrefix: String
+    ): Result<T> {
+        return try {
+            val result = repositoryCall()
+            result.onFailure { e ->
+                return Result.failure(Exception("$errorPrefix: ${e.message}"))
+            }
+            result
+        } catch (e: Exception) {
+            Result.failure(Exception("$errorPrefix: ${e.message}"))
+        }
+    }
 }

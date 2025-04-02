@@ -72,7 +72,6 @@ fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Project Description
             Text(
                 text = project.description,
                 style = MaterialTheme.typography.bodyMedium,
@@ -83,7 +82,6 @@ fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Due Date
             Text(
                 text = "Due: ${project.dueDate}",
                 style = MaterialTheme.typography.bodySmall,
@@ -92,16 +90,14 @@ fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Completion Indicator
             LinearProgressIndicator(
-                progress = 1f, // 100% completed
+                progress = 1f,
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black
             )
         }
     }
 
-    // Delete Confirmation Dialog
     if (showDeleteDialog.value) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog.value = false },

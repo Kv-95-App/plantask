@@ -17,8 +17,9 @@ import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 
 @Composable
-fun SplashScreen(navController: NavController) {
-    val authViewModel: AuthViewModel = hiltViewModel()
+fun SplashScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel) {
     val user = authViewModel.user.collectAsStateWithLifecycle().value
     val isKeepLoggedIn = authViewModel.isKeepLoggedIn.collectAsStateWithLifecycle().value
 
