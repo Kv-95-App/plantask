@@ -34,7 +34,6 @@ class UserFriendsViewModel @Inject constructor(
     val addFriendState: StateFlow<Result<String>?> = _addFriendState.asStateFlow()
 
     private val _deleteFriendState = MutableStateFlow<Result<Unit>?>(null)
-    val deleteFriendState: StateFlow<Result<Unit>?> = _deleteFriendState.asStateFlow()
 
     private val _acceptFriendRequestState = MutableStateFlow<Result<Unit>?>(null)
     val acceptFriendRequestState: StateFlow<Result<Unit>?> = _acceptFriendRequestState.asStateFlow()

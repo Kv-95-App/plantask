@@ -50,14 +50,15 @@ fun ProjectListScreen(
     val userId by authViewModel.userId.collectAsState()
     val isLoading by projectViewModel.loading.collectAsState()
 
-
     val filteredProjects = remember(projects, userId) {
         projects.filter { project ->
             userId?.let { uid ->
-                project.createdBy == uid || project.teamMembers.contains(uid)
+                project.createdBy == uid.toString() ||
+                        project.teamMembers.any { it == uid }
             } == true
         }
     }
+
 
     val ongoingProjects = remember(filteredProjects) {
         filteredProjects.filter { !it.isCompleted }
@@ -71,9 +72,6 @@ fun ProjectListScreen(
             projectViewModel.fetchAllProjects()
         }
     }
-
-    val fabColor = remember { mainAppColor }
-
     Scaffold(
         topBar = {
             TopBar(
@@ -91,7 +89,7 @@ fun ProjectListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddProjectClicked,
-                containerColor = fabColor
+                containerColor = mainAppColor
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Project")
             }
@@ -113,7 +111,9 @@ fun ProjectListScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                SectionHeader(title = "Completed Projects", onSeeAllClick = {})
+                SectionHeader(title = "Completed Projects", onSeeAllClick = {
+                    navController.navigate("completed_projects")
+                })
                 if (completedProjects.isEmpty()) {
                     Text(
                         text = "No completed projects",
@@ -136,7 +136,9 @@ fun ProjectListScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                SectionHeader(title = "Ongoing Projects", onSeeAllClick = {})
+                SectionHeader(title = "Ongoing Projects", onSeeAllClick = {
+                    navController.navigate("ongoing_projects")
+                })
                 if (ongoingProjects.isEmpty()) {
                     Text(
                         text = "No ongoing projects",
@@ -156,12 +158,8 @@ fun ProjectListScreen(
                                     val updatedProject = project.copy(isCompleted = true)
                                     projectViewModel.updateProject(project.id, updatedProject)
                                 },
-                                onProjectClicked = {
-                                    projectViewModel.getProjectById(project.id)
-                                    taskViewModel.loadTasksForProject(project.id)
-                                    navController.navigate("projectDetail/${project.id}")
-                                },
-                                navController = navController
+                                navController = navController,
+                                onProjectClicked = {}
                             )
                         }
                     }

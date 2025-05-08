@@ -62,8 +62,7 @@ import java.util.Calendar
 @Composable
 fun RegisterScreen(
     navController: NavHostController,
-    authViewModel: AuthViewModel,
-    onRegisterSuccess: () -> Unit
+    authViewModel: AuthViewModel
 ) {
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }

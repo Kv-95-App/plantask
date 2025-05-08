@@ -1,5 +1,6 @@
 package kv.apps.taskmanager.presentation.screens.projectScreens
 
+import android.R.attr.onClick
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,10 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -134,7 +137,11 @@ fun AddProjectScreen(
                 .padding(16.dp)
                 .clickable { focusManager.clearFocus() }
         ) {
-            Text("Project Title", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = Color.White)
+            Text(
+                "Project Title",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                color = Color.White
+            )
             TextField(
                 value = title,
                 onValueChange = { title = it },
@@ -159,7 +166,11 @@ fun AddProjectScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Project Description", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = Color.White)
+            Text(
+                "Project Description",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                color = Color.White
+            )
             TextField(
                 value = description,
                 onValueChange = { description = it },
@@ -274,41 +285,68 @@ fun AddProjectScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Button(
-                onClick = {
-                    if (title.isBlank() || description.isBlank() || dueDate == null || isPastDate) {
-                        showError = true
-                    } else {
-                        val currentUserId = authViewModel.user.value?.uid ?: ""
-                        val projectId = UUID.randomUUID().toString()
-
-                        val newProject = Project(
-                            id = projectId,
-                            title = title,
-                            description = description,
-                            dueDate = dueDate!!,
-                            isCompleted = false,
-                            createdBy = currentUserId,
-                            teamMembers = listOf(currentUserId)
-                        )
-                        projectViewModel.createProject(newProject)
-
-                        selectedFriends.forEach { friendId ->
-                            val invitation = ProjectInvitation(
-                                invitationId = "inv_${friendId}_${System.currentTimeMillis()}",
-                                fromUserId = currentUserId,
-                                toUserId = friendId,
-                                projectId = projectId,
-                                status = "Pending"
-                            )
-                            projectViewModel.sendProjectInvitation(invitation)
-                        }
-
-                        navController.popBackStack()
-                    }
-                }
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save Project", color = Color.Black)
+                OutlinedButton(
+                    onClick = {
+                        navController.popBackStack()
+                    },
+                    modifier = Modifier
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = {
+                        if (title.isBlank() || description.isBlank() || dueDate == null || isPastDate) {
+                            showError = true
+                        } else {
+                            val currentUserId = authViewModel.user.value?.uid ?: ""
+                            val projectId = UUID.randomUUID().toString()
+
+                            val newProject = Project(
+                                id = projectId,
+                                title = title,
+                                description = description,
+                                dueDate = dueDate!!,
+                                isCompleted = false,
+                                createdBy = currentUserId,
+                                teamMembers = listOf(currentUserId)
+                            )
+                            projectViewModel.createProject(newProject)
+
+                            selectedFriends.forEach { friendId ->
+                                val invitation = ProjectInvitation(
+                                    invitationId = "inv_${friendId}_${System.currentTimeMillis()}",
+                                    fromUserId = currentUserId,
+                                    toUserId = friendId,
+                                    projectId = projectId,
+                                    status = "Pending"
+                                )
+                                projectViewModel.sendProjectInvitation(invitation)
+                            }
+
+                            navController.popBackStack()
+                        }
+                    },
+                    modifier = Modifier
+                        .padding(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = mainAppColor,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Save Project", color = Color.Black)
+                }
             }
         }
     }

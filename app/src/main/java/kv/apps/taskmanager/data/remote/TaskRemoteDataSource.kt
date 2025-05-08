@@ -182,7 +182,7 @@ class TaskRemoteDataSource @Inject constructor(
                 Task(
                     id = doc.id,
                     assignedTo = assignedToList,
-                    isCompleted = data["isCompleted"] == true, // Direct boolean check
+                    isCompleted = data["isCompleted"] == true,
                     title = data["title"] as? String ?: "",
                     taskDetails = data["taskDetails"] as? String ?: "",
                     dueDate = data["dueDate"] as? String ?: ""

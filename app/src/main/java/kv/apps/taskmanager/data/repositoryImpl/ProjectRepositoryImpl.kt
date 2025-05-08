@@ -17,12 +17,6 @@ class ProjectRepositoryImpl @Inject constructor(
         onFailure = { Result.failure(Exception("Failed to get user projects: ${it.message}")) }
     )
 
-    override suspend fun getAllProjects(): Result<List<Project>> = runCatching {
-        projectRemoteDataSource.getAllProjects()
-    }.fold(
-        onSuccess = { Result.success(it) },
-        onFailure = { Result.failure(Exception("Failed to get all projects: ${it.message}")) }
-    )
 
     override suspend fun createProject(project: Project): Result<String> = runCatching {
         projectRemoteDataSource.createProject(project)
@@ -107,10 +101,17 @@ class ProjectRepositoryImpl @Inject constructor(
         userId: String
     ): Result<Unit> {
         return try {
-            projectRemoteDataSource.rejectInvitation(invitationId, projectId, userId)
+            projectRemoteDataSource.rejectInvitation(invitationId, projectId)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to reject invitation: ${e.message}"))
+        }
+    }
+    override suspend fun getProjectCreatorDetails(createdById: String): Result<Pair<String, String>> {
+        return try {
+            projectRemoteDataSource.getProjectCreatorDetails(createdById)
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to get creator details: ${e.message}"))
         }
     }
 }

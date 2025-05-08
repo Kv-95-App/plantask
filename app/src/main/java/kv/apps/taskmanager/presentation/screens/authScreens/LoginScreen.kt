@@ -49,7 +49,11 @@ import kv.apps.taskmanager.theme.mainAppColor
 fun LoginScreen(
     navController: NavHostController,
     authViewModel: AuthViewModel,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit = {
+        navController.navigate("project_list") {
+            popUpTo("login") { inclusive = true }
+        }
+    }
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }

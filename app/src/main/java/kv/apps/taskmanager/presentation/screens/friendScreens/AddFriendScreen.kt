@@ -192,7 +192,8 @@ fun AddFriendScreen(
                         enabled = !isLoading && currentUserId != null,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = mainAppColor,
-                            disabledContainerColor = Color.Gray
+                            disabledContainerColor = Color.Gray,
+                            contentColor = Color.Black
                         ),
                         modifier = Modifier.fillMaxWidth()
                     ) {

@@ -14,17 +14,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SectionHeader(title: String, onSeeAllClick: () -> Unit) {
+fun SectionHeader(
+    title: String,
+    onSeeAllClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .padding(16.dp)
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White)
-        TextButton(onClick = onSeeAllClick) {
-            Text("See all", color = Color(0xFFFFC107))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White
+        )
+
+        onSeeAllClick?.let { onClick ->
+            TextButton(onClick = onClick) {
+                Text("See all", color = Color(0xFFFFC107))
+            }
         }
     }
 }

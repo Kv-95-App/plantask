@@ -1,15 +1,30 @@
 package kv.apps.taskmanager.presentation.viewmodel
 
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.domain.model.User
 import kv.apps.taskmanager.domain.repository.UserPreferencesRepository
-import kv.apps.taskmanager.domain.usecase.authUseCases.*
+import kv.apps.taskmanager.domain.usecase.authUseCases.GetCurrentUserIdUseCase
+import kv.apps.taskmanager.domain.usecase.authUseCases.LoginUseCase
+import kv.apps.taskmanager.domain.usecase.authUseCases.LogoutUseCase
+import kv.apps.taskmanager.domain.usecase.authUseCases.ObserveAuthStateUseCase
+import kv.apps.taskmanager.domain.usecase.authUseCases.RegisterUseCase
+import kv.apps.taskmanager.domain.usecase.authUseCases.ResetPasswordUseCase
+import kv.apps.taskmanager.domain.usecase.authUseCases.SessionUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.FetchUserDetailsUseCase
 import javax.inject.Inject
 
@@ -46,10 +61,35 @@ class AuthViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    val isLoggedIn: StateFlow<Boolean> = _userId
+        .map { it != null }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+
+    private val lifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStop(owner: LifecycleOwner) {
+            if (!isKeepLoggedIn.value) {
+                logout()
+            }
+        }
+    }
+
     init {
         checkKeepLoggedIn()
         observeAuthState()
         loadCurrentUser()
+    }
+
+    fun registerLifecycle(lifecycle: Lifecycle) {
+        lifecycle.addObserver(lifecycleObserver)
+    }
+
+    fun unregisterLifecycle(lifecycle: Lifecycle) {
+        lifecycle.removeObserver(lifecycleObserver)
     }
 
     private fun loadCurrentUser() {
@@ -111,17 +151,22 @@ class AuthViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 logoutUseCase()
+
                 _user.value = null
                 _userId.value = null
+
                 _isKeepLoggedIn.value = false
+                userPreferencesRepository.saveKeepLoggedIn(false)
+                userPreferencesRepository.clearUserSession()
+
                 _errorType.value = null
                 _errorMessage.value = null
 
                 navController?.navigate("login") {
-                    popUpTo(0)
+                    popUpTo(0) { inclusive = true }
                 }
 
-                delay(500)
+                delay(300)
 
             } catch (e: Exception) {
                 _errorType.value = AuthErrorType.LOGOUT_ERROR
@@ -163,7 +208,6 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Rest of your functions remain exactly the same
     fun register(firstName: String, lastName: String, birthday: String, email: String, password: String) {
         viewModelScope.launch {
             _isLoading.value = true

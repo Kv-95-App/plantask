@@ -14,12 +14,6 @@ class ProjectUseCases @Inject constructor(
             errorPrefix = "Failed to load user projects"
         )
 
-    suspend fun getAllProjects(): Result<List<Project>> =
-        wrapRepositoryCall(
-            repositoryCall = { repository.getAllProjects() },
-            errorPrefix = "Failed to load all projects"
-        )
-
     suspend fun createProject(project: Project): Result<String> =
         wrapRepositoryCall(
             repositoryCall = { repository.createProject(project) },
@@ -96,16 +90,21 @@ class ProjectUseCases @Inject constructor(
         errorPrefix = "Failed to reject invitation"
     )
 
+    suspend fun getProjectCreatorDetails(createdById: String): Result<Pair<String, String>> =
+        wrapRepositoryCall(
+            repositoryCall = { repository.getProjectCreatorDetails(createdById) },
+            errorPrefix = "Failed to get creator details"
+        )
+
     private suspend fun <T> wrapRepositoryCall(
         repositoryCall: suspend () -> Result<T>,
         errorPrefix: String
     ): Result<T> {
         return try {
-            val result = repositoryCall()
-            result.onFailure { e ->
-                return Result.failure(Exception("$errorPrefix: ${e.message}"))
-            }
-            result
+            repositoryCall().fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { e -> Result.failure(Exception("$errorPrefix: ${e.message}")) }
+            )
         } catch (e: Exception) {
             Result.failure(Exception("$errorPrefix: ${e.message}"))
         }

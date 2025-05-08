@@ -155,7 +155,7 @@ fun FriendsScreen(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add Friend",
-                    tint = Color.White
+                    tint = Color.Black
                 )
             }
         },

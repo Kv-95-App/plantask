@@ -1,0 +1,26 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "teamMembers",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "projectInvitations",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "toUserId", "order": "ASCENDING"},
+        {"fieldPath": "status", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "projects",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "createdBy", "order": "ASCENDING"}
+      ]
+    }
+  ]
+}

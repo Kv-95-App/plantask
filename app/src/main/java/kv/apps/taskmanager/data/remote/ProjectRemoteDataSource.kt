@@ -1,15 +1,15 @@
 package kv.apps.taskmanager.data.remote
 
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
 import javax.inject.Inject
-import com.google.firebase.Timestamp
 
 class ProjectRemoteDataSource @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -18,9 +18,7 @@ class ProjectRemoteDataSource @Inject constructor(
     private val currentUserId: String?
         get() = auth.currentUser?.uid
 
-    private suspend fun fetchTeamMembers(projectId: String): List<String> =
-        withContext(Dispatchers.IO) {
-            try {
+    private suspend fun fetchTeamMembers(projectId: String): List<String> = try {
                 firestore.collection("projects")
                     .document(projectId)
                     .collection("teamMembers")
@@ -31,10 +29,8 @@ class ProjectRemoteDataSource @Inject constructor(
             } catch (_: Exception) {
                 emptyList()
             }
-        }
 
     private suspend fun getUserDetails(userId: String): Pair<String, String> =
-        withContext(Dispatchers.IO) {
             try {
                 val snapshot = firestore.collection("users")
                     .document(userId)
@@ -47,12 +43,57 @@ class ProjectRemoteDataSource @Inject constructor(
             } catch (_: Exception) {
                 Pair("", "")
             }
+
+    suspend fun getAllProjectsForUser(): List<Project> {
+        val currentUserId = currentUserId ?: throw Exception("User not logged in")
+        val projects = mutableListOf<Project>()
+
+        try {
+            val createdProjects = firestore.collection("projects")
+                .whereEqualTo("createdBy", currentUserId)
+                .get()
+                .await()
+
+            val memberProjects = firestore.collectionGroup("teamMembers")
+                .whereEqualTo("userId", currentUserId)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { it.reference.parent.parent?.id }
+
+            val allProjectIds = (createdProjects.documents.map { it.id } + memberProjects).distinct()
+
+            val projectSnapshots = firestore.collection("projects")
+                .whereIn(FieldPath.documentId(), allProjectIds)
+                .get()
+                .await()
+
+            projectSnapshots.documents.forEach { doc ->
+                doc.data?.let { data ->
+                    projects.add(
+                        Project(
+                            id = doc.id,
+                            title = data["title"] as? String ?: "",
+                            description = data["description"] as? String ?: "",
+                            createdBy = data["createdBy"] as? String ?: "",
+                            isCompleted = data["isCompleted"] as? Boolean == true,
+                            dueDate = data["dueDate"] as? String ?: "",
+                            teamMembers = fetchTeamMembers(doc.id)
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch projects: ${e.message}")
         }
+
+        return projects
+    }
 
     suspend fun addTeamMembersToProject(
         projectId: String,
         teamMemberIds: List<String>
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+    ): Result<Unit> =
         try {
             val batch = firestore.batch()
             for (memberId in teamMemberIds) {
@@ -75,70 +116,8 @@ class ProjectRemoteDataSource @Inject constructor(
         } catch (e: Exception) {
             Result.failure(Exception("Failed to add team members: ${e.message}"))
         }
-    }
 
-    suspend fun getAllProjectsForUser(): List<Project> = withContext(Dispatchers.IO) {
-        val currentUserId = currentUserId ?: throw Exception("User not logged in")
-        val projects = mutableListOf<Project>()
-        try {
-            val createdProjects = firestore.collection("projects")
-                .whereEqualTo("createdBy", currentUserId)
-                .get()
-                .await()
-            val memberProjects = firestore.collectionGroup("teamMembers")
-                .whereEqualTo("__name__", currentUserId)
-                .get()
-                .await()
-                .documents
-                .mapNotNull { it.reference.parent.parent?.id }
-            val allProjectIds =
-                (createdProjects.documents.map { it.id } + memberProjects).distinct()
-            allProjectIds.forEach { projectId ->
-                val projectDoc = firestore.collection("projects").document(projectId).get().await()
-                projectDoc.data?.let { data ->
-                    projects.add(
-                        Project(
-                            id = projectDoc.id,
-                            title = data["title"] as? String ?: "",
-                            description = data["description"] as? String ?: "",
-                            createdBy = data["createdBy"] as? String ?: "",
-                            isCompleted = data["isCompleted"] as? Boolean ?: false,
-                            dueDate = data["dueDate"] as? String ?: ""
-                        )
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            throw Exception("Failed to fetch projects: ${e.message}")
-        }
-        projects
-    }
-
-    suspend fun getAllProjects(): List<Project> = withContext(Dispatchers.IO) {
-        try {
-            firestore.collection("projects")
-                .get()
-                .await()
-                .documents
-                .mapNotNull { doc ->
-                    doc.data?.let { data ->
-                        Project(
-                            id = doc.id,
-                            title = data["title"] as? String ?: "",
-                            description = data["description"] as? String ?: "",
-                            createdBy = data["createdBy"] as? String ?: "",
-                            isCompleted = data["isCompleted"] as? Boolean ?: false,
-                            dueDate = data["dueDate"] as? String ?: "",
-                            teamMembers = fetchTeamMembers(doc.id)
-                        )
-                    }
-                }
-        } catch (e: Exception) {
-            throw Exception("Failed to fetch projects: ${e.message}")
-        }
-    }
-
-    suspend fun getProjectById(projectId: String): Project? = withContext(Dispatchers.IO) {
+    suspend fun getProjectById(projectId: String): Project? =
         try {
             val doc = firestore.collection("projects")
                 .document(projectId)
@@ -150,7 +129,7 @@ class ProjectRemoteDataSource @Inject constructor(
                     title = data["title"] as? String ?: "",
                     description = data["description"] as? String ?: "",
                     createdBy = data["createdBy"] as? String ?: "",
-                    isCompleted = data["isCompleted"] as? Boolean ?: false,
+                    isCompleted = data["isCompleted"] as? Boolean == true,
                     dueDate = data["dueDate"] as? String ?: "",
                     teamMembers = fetchTeamMembers(doc.id)
                 )
@@ -158,12 +137,11 @@ class ProjectRemoteDataSource @Inject constructor(
         } catch (e: Exception) {
             throw Exception("Failed to fetch project: ${e.message}")
         }
-    }
 
     suspend fun removeTeamMembersFromProject(
         projectId: String,
         teamMemberId: String
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+    ): Result<Unit> =
         try {
             firestore.collection("projects")
                 .document(projectId)
@@ -175,18 +153,15 @@ class ProjectRemoteDataSource @Inject constructor(
         } catch (e: Exception) {
             Result.failure(Exception("Failed to remove team member: ${e.message}"))
         }
-    }
 
     suspend fun getTeamMembersForProject(projectId: String): Result<List<String>> =
-        withContext(Dispatchers.IO) {
             try {
                 Result.success(fetchTeamMembers(projectId))
             } catch (e: Exception) {
                 Result.failure(Exception("Failed to fetch team members: ${e.message}"))
             }
-        }
 
-    suspend fun createProject(project: Project): String = withContext(Dispatchers.IO) {
+    suspend fun createProject(project: Project): String =
         try {
             val currentUserId = currentUserId ?: throw Exception("User not logged in")
             val data = mapOf(
@@ -198,7 +173,6 @@ class ProjectRemoteDataSource @Inject constructor(
             )
 
             val projectId = project.id.ifEmpty {
-                // Only generate a new ID if none was provided
                 firestore.collection("projects").document().id
             }
 
@@ -211,22 +185,11 @@ class ProjectRemoteDataSource @Inject constructor(
         } catch (e: Exception) {
             throw Exception("Failed to create project: ${e.message}")
         }
-    }
 
-    suspend fun deleteProject(projectId: String): Unit = withContext(Dispatchers.IO) {
+    suspend fun deleteProject(projectId: String) {
         try {
-            val members = fetchTeamMembers(projectId)
-            if (members.isNotEmpty()) {
-                val batch = firestore.batch()
-                members.forEach { memberId ->
-                    val memberRef = firestore.collection("projects")
-                        .document(projectId)
-                        .collection("teamMembers")
-                        .document(memberId)
-                    batch.delete(memberRef)
-                }
-                batch.commit().await()
-            }
+            deleteSubcollection("projects/$projectId/teamMembers")
+            deleteSubcollection("projects/$projectId/projectInvitations")
             firestore.collection("projects")
                 .document(projectId)
                 .delete()
@@ -236,8 +199,36 @@ class ProjectRemoteDataSource @Inject constructor(
         }
     }
 
+    private suspend fun deleteSubcollection(path: String) {
+        val collectionRef = firestore.collection(path)
+
+        while (true) {
+            val documents = collectionRef.limit(500).get().await()
+            if (documents.isEmpty) return
+
+            val batch = firestore.batch()
+            documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+            batch.commit().await()
+        }
+    }
+    suspend fun getProjectCreatorDetails(createdById: String): Result<Pair<String, String>> =
+        try {
+            val snapshot = firestore.collection("users")
+                .document(createdById)
+                .get()
+                .await()
+
+            val firstName = snapshot.getString("firstName") ?: ""
+            val lastName = snapshot.getString("lastName") ?: ""
+
+            Result.success(Pair(firstName, lastName))
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to fetch creator details: ${e.message}"))
+        }
+
     suspend fun updateProject(projectId: String, project: Project): Unit =
-        withContext(Dispatchers.IO) {
             try {
                 val currentMembers = fetchTeamMembers(projectId)
                 val newMembers = project.teamMembers
@@ -267,82 +258,101 @@ class ProjectRemoteDataSource @Inject constructor(
             } catch (e: Exception) {
                 throw Exception("Failed to update project: ${e.message}")
             }
-        }
 
-    suspend fun sendProjectInvitation(invitation: ProjectInvitation): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val invitationId = if (invitation.invitationId.isEmpty())
+
+    suspend fun sendProjectInvitation(invitation: ProjectInvitation): Result<Unit> =
+            try {
+                val invitationId = if (invitation.invitationId.isEmpty())
+                    firestore.collection("projects")
+                        .document(invitation.projectId)
+                        .collection("projectInvitations")
+                        .document().id
+                else invitation.invitationId
+
+                val invitationToSave = invitation.copy(
+                    invitationId = invitationId,
+                    status = "pending",
+                    timestamp = Timestamp.now()
+                )
+
                 firestore.collection("projects")
                     .document(invitation.projectId)
                     .collection("projectInvitations")
-                    .document().id
-            else invitation.invitationId
+                    .document(invitationId)
+                    .set(invitationToSave)
+                    .await()
 
-            val invitationToSave = invitation.copy(
-                invitationId = invitationId,
-                status = "pending",
-                timestamp = Timestamp.now()
-            )
-
-            firestore.collection("projects")
-                .document(invitation.projectId)
-                .collection("projectInvitations")
-                .document(invitationId)
-                .set(invitationToSave)
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to send project invitation: ${e.message}"))
-        }
-    }
-
-
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(Exception("Failed to send project invitation: ${e.message}"))
+            }
 
     suspend fun getPendingProjectInvitations(userId: String): List<ProjectInvitation> =
-        withContext(Dispatchers.IO) {
             try {
-                firestore.collectionGroup("projectInvitations")
-                    .whereEqualTo("toUserId", userId)
+                val query = firestore.collectionGroup("projectInvitations")
                     .whereEqualTo("status", "pending")
-                    .get()
-                    .await()
-                    .documents
-                    .mapNotNull { doc ->
-                        doc.toObject(ProjectInvitation::class.java)?.copy(invitationId = doc.id)
-                    }
+                    .whereEqualTo("toUserId", userId)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .limit(30)
+
+                val snapshot = query.get().await()
+
+                snapshot.documents.mapNotNull { doc ->
+                    ProjectInvitation(
+                        invitationId = doc.id,
+                        projectId = doc.getString("projectId") ?: "",
+                        fromUserId = doc.getString("fromUserId") ?: "",
+                        toUserId = doc.getString("toUserId") ?: "",
+                        status = doc.getString("status") ?: "",
+                        timestamp = doc.getTimestamp("timestamp") ?: Timestamp.now()
+                    )
+                }
             } catch (e: Exception) {
                 throw Exception("Failed to fetch invitations: ${e.message}")
             }
-        }
 
     suspend fun acceptInvitation(
         invitationId: String,
         projectId: String,
         userId: String
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            firestore.collection("projects")
+    ): Result<Unit> = try {
+            val invitationRef = firestore.collection("projects")
                 .document(projectId)
                 .collection("projectInvitations")
                 .document(invitationId)
-                .update("status", "accepted")
-                .await()
 
-            addTeamMembersToProject(projectId, listOf(userId))
+            firestore.runTransaction { transaction ->
+                val invitationSnapshot = transaction.get(invitationRef)
+                val status = invitationSnapshot.getString("status") ?: ""
+
+                if (status != "pending") {
+                    throw Exception("Invitation already processed")
+                }
+
+                transaction.update(invitationRef, "status", "accepted")
+
+                val memberRef = firestore.collection("projects")
+                    .document(projectId)
+                    .collection("teamMembers")
+                    .document(userId)
+
+                transaction.set(memberRef, mapOf(
+                    "userId" to userId,
+                    "joinedAt" to FieldValue.serverTimestamp()
+                ))
+
+                transaction.delete(invitationRef)
+            }.await()
 
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to accept invitation: ${e.message}"))
         }
-    }
 
     suspend fun rejectInvitation(
         invitationId: String,
-        projectId: String,
-        userId: String
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
+        projectId: String
+    ): Result<Unit> = try {
             firestore.collection("projects")
                 .document(projectId)
                 .collection("projectInvitations")
@@ -354,4 +364,3 @@ class ProjectRemoteDataSource @Inject constructor(
             Result.failure(Exception("Failed to reject invitation: ${e.message}"))
         }
     }
-}

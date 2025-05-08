@@ -332,8 +332,6 @@ fun ProjectDetailScreen(
             },
             friends = friendsState?.getOrNull() ?: emptyList(),
             currentUserId = authViewModel.currentUserId.value ?: "",
-            projectId = projectId,
-            projectViewModel = projectViewModel,
             onAddTeamMember = { friendId ->
                 val invitation = ProjectInvitation(
                     fromUserId = authViewModel.currentUserId.value ?: "",
@@ -370,8 +368,6 @@ fun AddTeamMembersDialog(
     onDismiss: () -> Unit,
     friends: List<Friend>,
     currentUserId: String,
-    projectId: String,
-    projectViewModel: ProjectViewModel,
     onAddTeamMember: (String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }

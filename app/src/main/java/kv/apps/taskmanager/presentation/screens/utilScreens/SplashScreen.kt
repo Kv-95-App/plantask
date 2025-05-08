@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
@@ -22,13 +21,14 @@ fun SplashScreen(
     authViewModel: AuthViewModel) {
     val user = authViewModel.user.collectAsStateWithLifecycle().value
     val isKeepLoggedIn = authViewModel.isKeepLoggedIn.collectAsStateWithLifecycle().value
+    val isLoggedIn = authViewModel.isLoggedIn.collectAsStateWithLifecycle().value
 
-    LaunchedEffect(user, isKeepLoggedIn) {
-        delay(500)
-        val startDestination = if (user != null || isKeepLoggedIn == true) {
+    LaunchedEffect(user, isKeepLoggedIn, isLoggedIn) {
+        delay(1000)
+        val startDestination = if (user != null || isKeepLoggedIn == true || isLoggedIn == true) {
             Screen.ProjectList.route
         } else {
-            Screen.GetStarted.route
+            Screen.Login.route
         }
         navController.navigate(startDestination) {
             popUpTo(Screen.SplashScreen.route) { inclusive = true }

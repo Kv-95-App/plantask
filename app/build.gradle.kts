@@ -22,35 +22,41 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+        signingConfigs {
+            getByName("debug") {
+                storeFile = file("C:\\Users\\lnkr\\.android\\debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
 
-    signingConfigs {
-        // Modify the existing debug signing configuration
-        getByName("debug") {
-            storeFile = file("C:\\Users\\lnkr\\.android\\debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
+            create("release") {
+                storeFile = file("my-release-key.jks")
+                storePassword = "Lenkorr1239#"
+                keyAlias = "plantask_key"
+                keyPassword = "Lenkorr1239#"
+            }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            signingConfig = signingConfigs.getByName("debug")
+        buildTypes {
+            release {
+                isMinifyEnabled = false
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -59,7 +65,6 @@ android {
 }
 
 dependencies {
-    implementation("androidx.security:security-crypto:1.1.0-alpha03")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1")
 
     // Dagger Hilt
@@ -73,23 +78,25 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.2")
 
     // Livedata
-    implementation("androidx.compose.runtime:runtime-livedata:1.7.3")
+    implementation("androidx.compose.runtime:runtime-livedata:1.8.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
 
     // Google Play Services
     implementation("com.google.android.gms:play-services-safetynet:18.1.0")
-    implementation("com.google.android.gms:play-services-base:18.6.0")
-    implementation ("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.android.gms:play-services-base:18.7.0")
+    implementation ("com.google.android.gms:play-services-auth:21.3.0")
 
     // Material3
-    implementation("androidx.compose.material3:material3:1.3.1")
+    implementation("androidx.compose.material3:material3:1.3.2")
     implementation(libs.material3)
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // AndroidX
     implementation(libs.androidx.core.ktx)

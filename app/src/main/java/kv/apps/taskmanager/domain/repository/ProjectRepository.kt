@@ -5,7 +5,6 @@ import kv.apps.taskmanager.domain.model.ProjectInvitation
 
 interface ProjectRepository {
     suspend fun getAllProjectsForUser(): Result<List<Project>>
-    suspend fun getAllProjects(): Result<List<Project>>
     suspend fun createProject(project: Project): Result<String>
     suspend fun deleteProject(projectId: String): Result<Unit>
     suspend fun updateProject(projectId: String, project: Project): Result<Unit>
@@ -31,4 +30,5 @@ interface ProjectRepository {
         projectId: String,
         userId: String
     ): Result<Unit>
+    suspend fun getProjectCreatorDetails(createdById: String): Result<Pair<String, String>>
 }

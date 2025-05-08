@@ -8,4 +8,6 @@ data class Project (
     val isCompleted: Boolean = false,
     val dueDate: String = "",
     val teamMembers: List<String> = emptyList(),
-)
+){
+    constructor() : this("", "", "", "", false, "", emptyList())
+}

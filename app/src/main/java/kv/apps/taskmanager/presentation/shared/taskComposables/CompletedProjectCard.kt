@@ -28,19 +28,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.theme.mainAppColor
 
 @Composable
-fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
+fun CompletedProjectCard(
+    project: Project,
+    onDeleteClicked: (Project) -> Unit,
+    modifier: Modifier = Modifier
+        .width(200.dp)
+) {
     val showDeleteDialog = remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier
-            .width(200.dp)
+        modifier = modifier
             .padding(8.dp)
-            .clickable(onClick = { /* Handle project click */ }),
+            .clickable(onClick = {  }),
         colors = CardDefaults.cardColors(containerColor = mainAppColor)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -65,8 +70,7 @@ fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color.Black
-                    )
+                        tint = Color.Black)
                 }
             }
 
@@ -77,24 +81,22 @@ fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Black,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+                overflow = TextOverflow.Ellipsis)
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "Due: ${project.dueDate}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Black
-            )
+                color = Color.Black)
 
             Spacer(modifier = Modifier.height(8.dp))
 
             LinearProgressIndicator(
                 progress = 1f,
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.Black
-            )
+                color = Color.Black,
+                trackColor = Color.Gray)
         }
     }
 
@@ -115,7 +117,6 @@ fun CompletedProjectCard(project: Project, onDeleteClicked: (Project) -> Unit) {
                 TextButton(onClick = { showDeleteDialog.value = false }) {
                     Text("No")
                 }
-            }
-        )
+            })
     }
 }

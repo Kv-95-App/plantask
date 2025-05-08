@@ -1,6 +1,7 @@
 package kv.apps.taskmanager.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -11,7 +12,9 @@ import kv.apps.taskmanager.presentation.screens.authScreens.RegisterScreen
 import kv.apps.taskmanager.presentation.screens.friendScreens.AddFriendScreen
 import kv.apps.taskmanager.presentation.screens.friendScreens.FriendsScreen
 import kv.apps.taskmanager.presentation.screens.projectScreens.AddProjectScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.AddTaskScreen
+import kv.apps.taskmanager.presentation.screens.taskScreens.AddTaskScreen
+import kv.apps.taskmanager.presentation.screens.projectScreens.CompletedProjectsScreen
+import kv.apps.taskmanager.presentation.screens.projectScreens.OngoingProjectsScreen
 import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectDetailScreen
 import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectListScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.GetStartedScreen
@@ -31,14 +34,36 @@ fun NavGraph(
     userFriendsViewModel: UserFriendsViewModel = hiltViewModel(),
     projectViewModel: ProjectViewModel = hiltViewModel()
 ) {
+    val isLoggedIn = authViewModel.isLoggedIn.collectAsState()
+
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = if (isLoggedIn.value == true) Screen.ProjectList.route else Screen.SplashScreen.route
     ) {
-        composable(route = Screen.GetStarted.route) {
-            GetStartedScreen(navController)
+        // Authentication Screens
+        composable(route = Screen.Login.route) {
+            LoginScreen(
+                navController = navController,
+                onLoginSuccess = {
+                    navController.navigate(Screen.ProjectList.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                                 },
+                authViewModel = authViewModel
+            )
+        }
+        composable(route = Screen.Register.route) {
+            RegisterScreen(
+                navController = navController,
+                authViewModel = authViewModel
+            )
         }
 
+        composable(route = Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(navController = navController, authViewModel = authViewModel)
+        }
+
+        // Project Screens
         composable(route = Screen.ProjectList.route) {
             ProjectListScreen(
                 navController = navController,
@@ -46,7 +71,6 @@ fun NavGraph(
                 taskViewModel = taskViewModel,
                 authViewModel = authViewModel,
                 onAddProjectClicked = { navController.navigate(Screen.AddProject.route) },
-
                 )
         }
 
@@ -71,42 +95,36 @@ fun NavGraph(
             )
         }
 
-        composable(route = Screen.Login.route) {
-            LoginScreen(
+        composable(route = Screen.OngoingProjects.route) {
+            OngoingProjectsScreen(
                 navController = navController,
-                onLoginSuccess = {
-                    navController.navigate(Screen.ProjectList.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                },
+                projectViewModel = projectViewModel,
+                taskViewModel = taskViewModel,
+                authViewModel = authViewModel,
+                onAddProjectClicked = { navController.navigate(Screen.AddProject.route) }
+            )
+        }
+
+        composable(route = Screen.CompletedProjects.route) {
+            CompletedProjectsScreen(
+                navController = navController,
+                projectViewModel = projectViewModel,
+                taskViewModel = taskViewModel,
                 authViewModel = authViewModel
             )
         }
 
-        composable(route = Screen.Register.route) {
-            RegisterScreen(
+        // Task Screens
+        composable(route = Screen.TaskDetail.route) {}
+
+        composable(route = Screen.AddTask.route) {
+            AddTaskScreen(
                 navController = navController,
-                onRegisterSuccess = {
-                    navController.navigate(Screen.ProjectList.route) {
-                        popUpTo(Screen.Register.route) { inclusive = true }
-                    }
-                },
-                authViewModel = authViewModel
+                projectViewModel = projectViewModel
             )
         }
 
-        composable(route = Screen.ForgotPassword.route) {
-            ForgotPasswordScreen(navController = navController, authViewModel = authViewModel)
-        }
-
-
-        composable(route = Screen.SplashScreen.route) {
-            SplashScreen(
-                navController = navController,
-                authViewModel = authViewModel
-            )
-        }
-
+        // Friend Screens
         composable(route = Screen.Friends.route) {
             FriendsScreen(
                 navController = navController,
@@ -123,11 +141,24 @@ fun NavGraph(
             )
         }
 
-        composable(route = Screen.AddTask.route) {
-            AddTaskScreen(
+
+        // Utility Screens
+        composable(route = Screen.SplashScreen.route) {
+            SplashScreen(
                 navController = navController,
-                projectViewModel = projectViewModel
+                authViewModel = authViewModel
             )
+        }
+
+        composable(route = Screen.GetStarted.route) {
+            GetStartedScreen(
+                navController = navController,
+
+            )
+        }
+
+        composable(route = Screen.Profile.route) {
+
         }
 
         composable(route = Screen.Notifications.route) {
@@ -137,5 +168,7 @@ fun NavGraph(
                 projectViewModel = projectViewModel
             )
         }
+
+
     }
 }

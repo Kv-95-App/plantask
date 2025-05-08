@@ -73,80 +73,75 @@ class AuthRepositoryImpl @Inject constructor(
         birthday: String,
         email: String,
         password: String
-    ): Result<User> {
-        return withContext(Dispatchers.IO) {
-            try {
-                authRemoteDataSource.signUpWithEmailAndPassword(email, password)
-                val firebaseUser = authRemoteDataSource.firebaseAuth.currentUser
-                    ?: return@withContext Result.failure(Exception("Registration failed"))
+    ): Result<User> = try {
+        authRemoteDataSource
+            .signUpWithEmailAndPassword(email, password)
+        val firebaseUser = authRemoteDataSource.firebaseAuth.currentUser
+            ?: return Result
+                .failure(Exception("Registration failed"))
 
-                val user = User(
-                    uid = firebaseUser.uid,
-                    email = email,
-                    firstName = firstName,
-                    lastName = lastName,
-                    birthday = birthday
-                )
+        val user = User(
+            uid = firebaseUser.uid,
+            email = email,
+            firstName = firstName,
+            lastName = lastName,
+            birthday = birthday
+        )
+        firestore
+            .collection("users")
+            .document(user.uid)
+            .set(user)
+            .await()
 
-                firestore.collection("users").document(user.uid).set(user).await()
-
-                Result.success(user)
-
-            } catch (_: FirebaseAuthUserCollisionException) {
-                Result.failure(Exception("Email already in use"))
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "Registration error", e)
-                try {
-                    authRemoteDataSource.firebaseAuth.currentUser?.delete()?.await()
-                } catch (deleteError: Exception) {
-                    Log.e("AuthRepository", "Failed to clean up user", deleteError)
-                }
-                Result.failure(Exception("Registration failed: ${e.message}"))
-            }
+        Result.success(user)
+    } catch (_: FirebaseAuthUserCollisionException) {
+        Result.failure(Exception("Email already in use"))
+    } catch (e: Exception) {
+        Log.e("AuthRepository", "Registration error", e)
+        try {
+            authRemoteDataSource.firebaseAuth.currentUser?.delete()?.await()
+        } catch (deleteError: Exception) {
+            Log.e("AuthRepository", "Failed to clean up user", deleteError)
         }
+        Result.failure(Exception("Registration failed: ${e.message}"))
     }
 
-    override suspend fun resetPassword(email: String): Result<Unit> {
-        return withContext(Dispatchers.IO) {
-            try {
-                authRemoteDataSource.resetPassword(email)
-                Result.success(Unit)
-            } catch (_: FirebaseAuthInvalidUserException) {
-                Result.failure(Exception("No account with this email"))
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "Password reset error", e)
-                Result.failure(Exception("Failed to reset password"))
-            }
-        }
+    override suspend fun resetPassword(email: String): Result<Unit> = try {
+        authRemoteDataSource.resetPassword(email)
+        Result.success(Unit)
+    } catch (_: FirebaseAuthInvalidUserException) {
+        Result.failure(Exception("No account with this email"))
+    } catch (e: Exception) {
+        Log.e("AuthRepository", "Password reset error", e)
+        Result.failure(Exception("Failed to reset password"))
     }
 
     override suspend fun logout() {
-        withContext(Dispatchers.IO) {
-            try {
-                authRemoteDataSource.logout()
-
-                delay(1000)
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "Logout error", e)
-                throw e
-            }
+        try {
+            authRemoteDataSource.logout()
+            delay(1000)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Logout error", e)
+            throw e
         }
     }
-
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun observeAuthState(): Flow<User?> = callbackFlow {
-        val listener = FirebaseAuth.AuthStateListener { auth ->
-            trySend(auth.currentUser?.uid)
+        val auth = FirebaseAuth.getInstance()
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            trySend(firebaseAuth.currentUser?.uid)
         }
-        authRemoteDataSource.firebaseAuth.addAuthStateListener(listener)
+        auth.addAuthStateListener(listener)
 
         awaitClose {
-            authRemoteDataSource.firebaseAuth.removeAuthStateListener(listener)
+            auth.removeAuthStateListener(listener)
         }
     }.flatMapLatest { userId ->
         if (userId != null) {
             firestore.collection("users").document(userId).snapshots()
-                .map { it.toObject(User::class.java)?.copy(uid = userId) }
+                .map { document ->
+                    document.toObject(User::class.java)?.copy(uid = userId)
+                }
         } else {
             flowOf(null)
         }
