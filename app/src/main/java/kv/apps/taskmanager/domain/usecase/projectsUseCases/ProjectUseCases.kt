@@ -2,6 +2,7 @@ package kv.apps.taskmanager.domain.usecase.projectsUseCases
 
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
+import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.repository.ProjectRepository
 import javax.inject.Inject
 
@@ -38,13 +39,6 @@ class ProjectUseCases @Inject constructor(
             errorPrefix = "Failed to get project"
         )
 
-    suspend fun addTeamMembersToProject(
-        projectId: String,
-        teamMemberIds: List<String>
-    ): Result<Unit> = wrapRepositoryCall(
-        repositoryCall = { repository.addTeamMembersToProject(projectId, teamMemberIds) },
-        errorPrefix = "Failed to add team members"
-    )
 
     suspend fun removeTeamMembersFromProject(
         projectId: String,
@@ -54,11 +48,10 @@ class ProjectUseCases @Inject constructor(
         errorPrefix = "Failed to remove team member"
     )
 
-    suspend fun getTeamMembersForProject(projectId: String): Result<List<String>> =
-        wrapRepositoryCall(
-            repositoryCall = { repository.getTeamMembersForProject(projectId) },
-            errorPrefix = "Failed to get team members"
-        )
+    suspend fun getTeamMembersForProject(projectId: String): List<TeamMember> =
+
+        repository.getTeamMembersForProject(projectId)
+
 
     suspend fun sendProjectInvitation(invitation: ProjectInvitation): Result<Unit> =
         wrapRepositoryCall(

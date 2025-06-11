@@ -9,7 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import kv.apps.taskmanager.presentation.navigation.NavGraph
 import kv.apps.taskmanager.presentation.navigation.Screen
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.TaskManagerTheme
 
 @AndroidEntryPoint
@@ -31,8 +31,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 NavGraph(
-                    navController = navController,
-                    startDestination = Screen.SplashScreen.route
+                    navController = navController
                 )
             }
         }

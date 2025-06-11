@@ -49,8 +49,9 @@ import kv.apps.taskmanager.presentation.shared.friendsComposables.FriendCard
 import kv.apps.taskmanager.presentation.shared.friendsComposables.PendingFriendRequestCard
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsStateType
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
@@ -61,15 +62,16 @@ fun FriendsScreen(
     authViewModel: AuthViewModel
 ) {
     val focusManager = LocalFocusManager.current
-    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val currentUserId = authViewModel.uiState.collectAsState().value.userId
 
     val nonNullCurrentUserId = currentUserId
 
-    val friendsState by userFriendsViewModel.friendsState.collectAsState()
-    val pendingFriendRequestsState by userFriendsViewModel.pendingFriendRequestsState.collectAsState()
-    val isLoading by userFriendsViewModel.isLoadingFriends.collectAsState()
-    val acceptFriendRequestState by userFriendsViewModel.acceptFriendRequestState.collectAsState()
-    val rejectFriendRequestState by userFriendsViewModel.rejectFriendRequestState.collectAsState()
+    val uiState = userFriendsViewModel.uiState.collectAsState()
+    val friendsState = uiState.value.friends
+    val pendingFriendRequestsState = uiState.value.pendingFriendRequests
+    val isLoading = uiState.value.isLoading
+    val acceptFriendRequestState = uiState.value.acceptFriendRequestState
+    val rejectFriendRequestState = uiState.value.rejectFriendRequestState
 
     val friendsList by remember {
         derivedStateOf {
@@ -97,12 +99,12 @@ fun FriendsScreen(
             acceptFriendRequestState?.isSuccess == true -> {
                 snackBarMessage = "Friend request accepted!"
                 showSnackBar = true
-                userFriendsViewModel.resetState("acceptFriendRequest")
+                userFriendsViewModel.resetState(UserFriendsStateType.ACCEPT_REQUEST)
             }
             acceptFriendRequestState?.isFailure == true -> {
-                snackBarMessage = "Failed to accept friend request: ${acceptFriendRequestState!!.exceptionOrNull()?.message}"
+                snackBarMessage = "Failed to accept friend request: ${acceptFriendRequestState.exceptionOrNull()?.message}"
                 showSnackBar = true
-                userFriendsViewModel.resetState("acceptFriendRequest")
+                userFriendsViewModel.resetState(UserFriendsStateType.ACCEPT_REQUEST)
             }
             else -> Unit
         }
@@ -113,12 +115,12 @@ fun FriendsScreen(
             rejectFriendRequestState?.isSuccess == true -> {
                 snackBarMessage = "Friend request rejected!"
                 showSnackBar = true
-                userFriendsViewModel.resetState("rejectFriendRequest")
+                userFriendsViewModel.resetState(UserFriendsStateType.REJECT_REQUEST)
             }
             rejectFriendRequestState?.isFailure == true -> {
-                snackBarMessage = "Failed to reject friend request: ${rejectFriendRequestState!!.exceptionOrNull()?.message}"
+                snackBarMessage = "Failed to reject friend request: ${rejectFriendRequestState.exceptionOrNull()?.message}"
                 showSnackBar = true
-                userFriendsViewModel.resetState("rejectFriendRequest")
+                userFriendsViewModel.resetState(UserFriendsStateType.REJECT_REQUEST)
             }
             else -> Unit
         }
@@ -244,7 +246,7 @@ fun FriendsScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "Error: ${pendingFriendRequestsState?.exceptionOrNull()?.message}",
+                                        text = "Error: ${pendingFriendRequestsState.exceptionOrNull()?.message}",
                                         color = Color.Red
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -335,7 +337,7 @@ fun FriendsScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Text(
-                                            text = "Error: ${friendsState?.exceptionOrNull()?.message}",
+                                            text = "Error: ${friendsState.exceptionOrNull()?.message}",
                                             color = Color.Red
                                         )
                                         Spacer(modifier = Modifier.height(16.dp))

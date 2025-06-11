@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kv.apps.taskmanager.domain.model.Friend
-import kv.apps.taskmanager.presentation.viewmodel.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.onGoingCardColor
 
 @Composable
@@ -47,7 +47,8 @@ fun FriendCard(
             Text(
                 text = friend.friendName,
                 color = Color.White,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
             )
             IconButton(
                 onClick = {

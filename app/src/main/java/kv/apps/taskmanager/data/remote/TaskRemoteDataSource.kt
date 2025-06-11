@@ -4,9 +4,12 @@ import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 import kv.apps.taskmanager.domain.model.Task
+import kv.apps.taskmanager.domain.model.User
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -38,7 +41,8 @@ class TaskRemoteDataSource @Inject constructor(
                         isCompleted = data["isCompleted"] as? Boolean == true,
                         title = data["title"] as? String ?: "",
                         taskDetails = data["taskDetails"] as? String ?: "",
-                        dueDate = data["dueDate"] as? String ?: ""
+                        dueDate = data["dueDate"] as? String ?: "",
+                        projectId = projectId
                     )
                 )
             }
@@ -57,7 +61,8 @@ class TaskRemoteDataSource @Inject constructor(
                 "taskDetails" to task.taskDetails,
                 "dueDate" to task.dueDate,
                 "isCompleted" to task.isCompleted,
-                "assignedTo" to task.assignedTo
+                "assignedTo" to task.assignedTo,
+                "projectId" to task.projectId
             )
 
             firestore.collection("projects")
@@ -153,7 +158,8 @@ class TaskRemoteDataSource @Inject constructor(
                     isCompleted = data["isCompleted"] == true,
                     title = data["title"] as? String ?: "",
                     taskDetails = data["taskDetails"] as? String ?: "",
-                    dueDate = data["dueDate"] as? String ?: ""
+                    dueDate = data["dueDate"] as? String ?: "",
+                    projectId = projectId
                 )
             }
         } catch (e: Exception) {
@@ -185,12 +191,37 @@ class TaskRemoteDataSource @Inject constructor(
                     isCompleted = data["isCompleted"] == true,
                     title = data["title"] as? String ?: "",
                     taskDetails = data["taskDetails"] as? String ?: "",
-                    dueDate = data["dueDate"] as? String ?: ""
+                    dueDate = data["dueDate"] as? String ?: "",
+                    projectId = projectId
                 )
             }
         } catch (e: Exception) {
             Log.e("Firestore", "Failed to filter tasks by date", e)
             emptyList()
+        }
+    }
+
+    fun getProjectUsers(projectId: String): Flow<List<User>> = flow {
+        try {
+            val projectDoc = firestore.collection("projects")
+                .document(projectId)
+                .get()
+                .await()
+
+            val teamMemberIds = projectDoc.get("teamMembers") as? List<String> ?: emptyList()
+
+            val users = teamMemberIds.mapNotNull { userId ->
+                firestore.collection("users")
+                    .document(userId)
+                    .get()
+                    .await()
+                    .toObject(User::class.java)
+            }
+
+            emit(users)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error fetching team members", e)
+            emit(emptyList())
         }
     }
 

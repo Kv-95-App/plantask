@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kv.apps.taskmanager.domain.model.User
-import kv.apps.taskmanager.presentation.viewmodel.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.onGoingCardColor
 
 @Composable
@@ -42,7 +42,8 @@ fun PendingFriendRequestCard(
             Text(
                 text = "${user.firstName} ${user.lastName}",
                 color = Color.White,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
             )
 
             IconButton(

@@ -2,6 +2,7 @@ package kv.apps.taskmanager.domain.repository
 
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
+import kv.apps.taskmanager.domain.model.TeamMember
 
 interface ProjectRepository {
     suspend fun getAllProjectsForUser(): Result<List<Project>>
@@ -17,7 +18,7 @@ interface ProjectRepository {
         projectId: String,
         teamMemberId: String
     ): Result<Unit>
-    suspend fun getTeamMembersForProject(projectId: String): Result<List<String>>
+    suspend fun getTeamMembersForProject(projectId: String): List<TeamMember>
     suspend fun sendProjectInvitation(invitation: ProjectInvitation): Result<Unit>
     suspend fun getPendingProjectInvitations(userId: String): Result<List<ProjectInvitation>>
     suspend fun acceptInvitation(

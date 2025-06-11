@@ -9,6 +9,7 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
+import kv.apps.taskmanager.domain.model.TeamMember
 import javax.inject.Inject
 
 class ProjectRemoteDataSource @Inject constructor(
@@ -19,30 +20,30 @@ class ProjectRemoteDataSource @Inject constructor(
         get() = auth.currentUser?.uid
 
     private suspend fun fetchTeamMembers(projectId: String): List<String> = try {
-                firestore.collection("projects")
-                    .document(projectId)
-                    .collection("teamMembers")
-                    .get()
-                    .await()
-                    .documents
-                    .map { it.id }
-            } catch (_: Exception) {
-                emptyList()
-            }
+        firestore.collection("projects")
+            .document(projectId)
+            .collection("teamMembers")
+            .get()
+            .await()
+            .documents
+            .map { it.id }
+    } catch (_: Exception) {
+        emptyList()
+    }
 
     private suspend fun getUserDetails(userId: String): Pair<String, String> =
-            try {
-                val snapshot = firestore.collection("users")
-                    .document(userId)
-                    .get()
-                    .await()
-                Pair(
-                    snapshot.getString("firstName") ?: "",
-                    snapshot.getString("lastName") ?: ""
-                )
-            } catch (_: Exception) {
-                Pair("", "")
-            }
+        try {
+            val snapshot = firestore.collection("users")
+                .document(userId)
+                .get()
+                .await()
+            Pair(
+                snapshot.getString("firstName") ?: "",
+                snapshot.getString("lastName") ?: ""
+            )
+        } catch (_: Exception) {
+            Pair("", "")
+        }
 
     suspend fun getAllProjectsForUser(): List<Project> {
         val currentUserId = currentUserId ?: throw Exception("User not logged in")
@@ -61,7 +62,8 @@ class ProjectRemoteDataSource @Inject constructor(
                 .documents
                 .mapNotNull { it.reference.parent.parent?.id }
 
-            val allProjectIds = (createdProjects.documents.map { it.id } + memberProjects).distinct()
+            val allProjectIds =
+                (createdProjects.documents.map { it.id } + memberProjects).distinct()
 
             val projectSnapshots = firestore.collection("projects")
                 .whereIn(FieldPath.documentId(), allProjectIds)
@@ -93,29 +95,66 @@ class ProjectRemoteDataSource @Inject constructor(
     suspend fun addTeamMembersToProject(
         projectId: String,
         teamMemberIds: List<String>
-    ): Result<Unit> =
-        try {
-            val batch = firestore.batch()
-            for (memberId in teamMemberIds) {
-                val (firstName, lastName) = getUserDetails(memberId)
+    ): Result<Unit> = try {
+        val batch = firestore.batch()
+
+        for (userId in teamMemberIds) {
+            try {
+                val userDoc = firestore.collection("users")
+                    .document(userId)
+                    .get()
+                    .await()
+
+                val firstName = userDoc.getString("firstName") ?: ""
+                val lastName = userDoc.getString("lastName") ?: ""
+                val name = if (firstName.isNotEmpty() || lastName.isNotEmpty()) {
+                    "$firstName $lastName".trim()
+                } else {
+                    userDoc.getString("email") ?: userId.take(8)
+                }
+
+                val email = userDoc.getString("email") ?: ""
+
                 val memberRef = firestore.collection("projects")
                     .document(projectId)
                     .collection("teamMembers")
-                    .document(memberId)
+                    .document(userId)
+
                 batch.set(
                     memberRef, mapOf(
-                        "userId" to memberId,
+                        "userId" to userId,
                         "firstName" to firstName,
                         "lastName" to lastName,
+                        "displayName" to name,
+                        "email" to email,
+                        "joinedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+            } catch (_: Exception) {
+                val fallbackName = "User ${userId.take(8)}"
+                val memberRef = firestore.collection("projects")
+                    .document(projectId)
+                    .collection("teamMembers")
+                    .document(userId)
+
+                batch.set(
+                    memberRef, mapOf(
+                        "userId" to userId,
+                        "firstName" to "",
+                        "lastName" to "",
+                        "displayName" to fallbackName,
+                        "email" to "",
                         "joinedAt" to FieldValue.serverTimestamp()
                     )
                 )
             }
-            batch.commit().await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to add team members: ${e.message}"))
         }
+
+        batch.commit().await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(Exception("Failed to add team members: ${e.message}"))
+    }
 
     suspend fun getProjectById(projectId: String): Project? =
         try {
@@ -123,12 +162,16 @@ class ProjectRemoteDataSource @Inject constructor(
                 .document(projectId)
                 .get()
                 .await()
+
             doc.data?.let { data ->
+                val createdBy = data["createdBy"] as? String ?: ""
+                val (ownerFirstName, ownerLastName) = getUserDetails(createdBy)
+
                 Project(
                     id = doc.id,
                     title = data["title"] as? String ?: "",
                     description = data["description"] as? String ?: "",
-                    createdBy = data["createdBy"] as? String ?: "",
+                    createdBy = createdBy,
                     isCompleted = data["isCompleted"] as? Boolean == true,
                     dueDate = data["dueDate"] as? String ?: "",
                     teamMembers = fetchTeamMembers(doc.id)
@@ -154,22 +197,54 @@ class ProjectRemoteDataSource @Inject constructor(
             Result.failure(Exception("Failed to remove team member: ${e.message}"))
         }
 
-    suspend fun getTeamMembersForProject(projectId: String): Result<List<String>> =
-            try {
-                Result.success(fetchTeamMembers(projectId))
-            } catch (e: Exception) {
-                Result.failure(Exception("Failed to fetch team members: ${e.message}"))
+    suspend fun getTeamMembersForProject(projectId: String): List<TeamMember> {
+        return try {
+            val snapshot = firestore.collection("projects")
+                .document(projectId)
+                .collection("teamMembers")
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { doc ->
+                TeamMember(
+                    userId = doc.id,
+                    firstName = doc.getString("firstName") ?: "",
+                    lastName = doc.getString("lastName") ?: "",
+                    joinedAt = doc.getDate("joinedAt"),
+                    email =  doc.getString("email")
+                )
             }
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch team members: ${e.message}")
+        }
+    }
 
     suspend fun createProject(project: Project): String =
         try {
             val currentUserId = currentUserId ?: throw Exception("User not logged in")
+
+            val userDoc = firestore.collection("users")
+                .document(currentUserId)
+                .get()
+                .await()
+
+            val firstName = userDoc.getString("firstName") ?: ""
+            val lastName = userDoc.getString("lastName") ?: ""
+            val email = userDoc.getString("email") ?: ""
+            val displayName = if (firstName.isNotEmpty() || lastName.isNotEmpty()) {
+                "$firstName $lastName".trim()
+            } else {
+                email.ifEmpty { currentUserId.take(8) }
+            }
+
             val data = mapOf(
                 "title" to project.title,
                 "description" to project.description,
                 "createdBy" to currentUserId,
+                "createdByName" to displayName,
                 "isCompleted" to project.isCompleted,
-                "dueDate" to project.dueDate
+                "dueDate" to project.dueDate,
+                "createdAt" to FieldValue.serverTimestamp()
             )
 
             val projectId = project.id.ifEmpty {
@@ -179,6 +254,23 @@ class ProjectRemoteDataSource @Inject constructor(
             firestore.collection("projects")
                 .document(projectId)
                 .set(data)
+                .await()
+
+            firestore.collection("projects")
+                .document(projectId)
+                .collection("teamMembers")
+                .document(currentUserId)
+                .set(
+                    mapOf(
+                        "userId" to currentUserId,
+                        "firstName" to firstName,
+                        "lastName" to lastName,
+                        "displayName" to displayName,
+                        "email" to email,
+                        "joinedAt" to FieldValue.serverTimestamp(),
+                        "isAdmin" to true
+                    )
+                )
                 .await()
 
             projectId
@@ -316,38 +408,56 @@ class ProjectRemoteDataSource @Inject constructor(
         projectId: String,
         userId: String
     ): Result<Unit> = try {
-            val invitationRef = firestore.collection("projects")
-                .document(projectId)
-                .collection("projectInvitations")
-                .document(invitationId)
+        val invitationRef = firestore.collection("projects")
+            .document(projectId)
+            .collection("projectInvitations")
+            .document(invitationId)
 
-            firestore.runTransaction { transaction ->
-                val invitationSnapshot = transaction.get(invitationRef)
-                val status = invitationSnapshot.getString("status") ?: ""
+        val userDoc = firestore.collection("users")
+            .document(userId)
+            .get()
+            .await()
 
-                if (status != "pending") {
-                    throw Exception("Invitation already processed")
-                }
-
-                transaction.update(invitationRef, "status", "accepted")
-
-                val memberRef = firestore.collection("projects")
-                    .document(projectId)
-                    .collection("teamMembers")
-                    .document(userId)
-
-                transaction.set(memberRef, mapOf(
-                    "userId" to userId,
-                    "joinedAt" to FieldValue.serverTimestamp()
-                ))
-
-                transaction.delete(invitationRef)
-            }.await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to accept invitation: ${e.message}"))
+        val firstName = userDoc.getString("firstName") ?: ""
+        val lastName = userDoc.getString("lastName") ?: ""
+        val email = userDoc.getString("email") ?: ""
+        val displayName = if (firstName.isNotEmpty() || lastName.isNotEmpty()) {
+            "$firstName $lastName".trim()
+        } else {
+            email.ifEmpty { userId.take(8) }
         }
+
+        firestore.runTransaction { transaction ->
+            val invitationSnapshot = transaction.get(invitationRef)
+            val status = invitationSnapshot.getString("status") ?: ""
+
+            if (status != "pending") {
+                throw Exception("Invitation already processed")
+            }
+
+            transaction.update(invitationRef, "status", "accepted")
+
+            val memberRef = firestore.collection("projects")
+                .document(projectId)
+                .collection("teamMembers")
+                .document(userId)
+
+            transaction.set(memberRef, mapOf(
+                "userId" to userId,
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "displayName" to displayName,
+                "email" to email,
+                "joinedAt" to FieldValue.serverTimestamp()
+            ))
+
+            transaction.delete(invitationRef)
+        }.await()
+
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(Exception("Failed to accept invitation: ${e.message}"))
+    }
 
     suspend fun rejectInvitation(
         invitationId: String,

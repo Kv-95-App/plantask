@@ -1,7 +1,10 @@
 package kv.apps.taskmanager.data.remote
 
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class AuthRemoteDataSource @Inject constructor(
@@ -20,7 +23,10 @@ class AuthRemoteDataSource @Inject constructor(
         firebaseAuth.sendPasswordResetEmail(email).await()
     }
 
-    fun logout() {
-        firebaseAuth.signOut()
+    suspend fun logout() {
+        withContext(Dispatchers.IO) {
+            firebaseAuth.signOut()
+            delay(50)
+        }
     }
 }

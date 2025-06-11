@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,7 +47,8 @@ fun TopBar(
     onProfileClicked: () -> Unit,
     onLogoutClicked: () -> Unit,
     showBackArrow: Boolean = false,
-    onBackPressed: (() -> Unit)? = null
+    onBackPressed: (() -> Unit)? = null,
+    isLoggingOut: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(false) }
     var isBackButtonEnabled by remember { mutableStateOf(true) }
@@ -110,18 +113,27 @@ fun TopBar(
         ) {
             IconButton(
                 onClick = { expanded = true },
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(48.dp),
+                enabled = !isLoggingOut
             ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "Profile",
-                    tint = Color.White,
-                    modifier = Modifier.size(42.dp)
-                )
+                if (isLoggingOut) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Profile",
+                        tint = Color.White,
+                        modifier = Modifier.size(42.dp)
+                    )
+                }
             }
 
             DropdownMenu(
-                expanded = expanded,
+                expanded = expanded && !isLoggingOut,
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.background(Color.White),
                 offset = DpOffset(8.dp, 0.dp)
@@ -131,13 +143,29 @@ fun TopBar(
                     onClick = {
                         expanded = false
                         onProfileClicked()
-                    }
+                    },
+                    enabled = !isLoggingOut
                 )
                 DropdownMenuItem(
-                    text = { Text("Logout") },
+                    text = {
+                        if (isLoggingOut) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Logging out...")
+                            }
+                        } else {
+                            Text("Logout")
+                        }
+                    },
                     onClick = {
-                        expanded = false
-                        onLogoutClicked()
+                        if (!isLoggingOut) {
+                            expanded = false
+                            onLogoutClicked()
+                        }
                     }
                 )
             }

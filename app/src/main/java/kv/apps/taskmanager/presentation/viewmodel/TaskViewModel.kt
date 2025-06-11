@@ -1,12 +1,16 @@
 package kv.apps.taskmanager.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.domain.model.Task
+import kv.apps.taskmanager.domain.model.User
 import kv.apps.taskmanager.domain.usecase.tasksUseCases.TaskUseCases
 import java.time.LocalDate
 import javax.inject.Inject
@@ -37,6 +41,9 @@ class TaskViewModel @Inject constructor(
 
     private val _selectedTask = MutableStateFlow<Task?>(null)
     val selectedTask: StateFlow<Task?> = _selectedTask
+
+    private val _projectTeamMembers = MutableStateFlow<List<User>>(emptyList())
+    val projectTeamMembers: StateFlow<List<User>> = _projectTeamMembers
 
     fun loadTasksForProject(projectId: String) {
         _loading.value = true
@@ -124,6 +131,21 @@ class TaskViewModel @Inject constructor(
             } catch (e: Exception) {
                 _errorType.value = TaskErrorType.FILTER_ERROR
                 _errorMessage.value = "Failed to filter tasks: ${e.message}"
+            }
+        }
+    }
+
+    fun getProjectUsers(projectId: String) {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                taskUseCases.getProjectUsers(projectId).collect { users ->
+                    _projectTeamMembers.value = users
+                }
+            } catch (e: Exception) {
+                Log.e("ViewModel", "Error loading team members", e)
+            } finally {
+                _loading.value = false
             }
         }
     }

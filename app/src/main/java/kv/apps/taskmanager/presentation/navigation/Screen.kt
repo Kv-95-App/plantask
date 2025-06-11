@@ -12,10 +12,16 @@ sealed class Screen(val route: String) {
     object AddProject : Screen("add_project")
     object OngoingProjects : Screen("ongoing_projects")
     object CompletedProjects : Screen("completed_projects")
+    object ProjectMembers : Screen("project_members/{projectId}") {
+        fun createRoute(projectId: String) = "project_members/$projectId"
+    }
     // Task Screens
-    object TaskDetail : Screen("task_detail/{taskId}") {
-            fun createRoute(taskId: String) = "task_detail/$taskId" }
-    object AddTask : Screen("add_task")
+    object TaskDetail : Screen("task_detail/{taskId}/{projectId}") {
+        fun createRoute(taskId: String, projectId: String) = "task_detail/$taskId/$projectId"
+    }
+    object AddTask : Screen("add_task/{projectId}") {
+        fun createRoute(projectId: String) = "add_task/$projectId"
+    }
     // Friend Screens
     object Friends : Screen("friends")
     object AddFriend : Screen("add_friend")

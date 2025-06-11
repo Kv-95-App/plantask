@@ -1,15 +1,13 @@
 package kv.apps.taskmanager.presentation.shared.taskComposables
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -27,9 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kv.apps.taskmanager.R
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.theme.mainAppColor
 
@@ -38,9 +40,12 @@ fun CompletedProjectCard(
     project: Project,
     onDeleteClicked: (Project) -> Unit,
     modifier: Modifier = Modifier
-        .width(200.dp)
 ) {
     val showDeleteDialog = remember { mutableStateOf(false) }
+
+    val customFont = FontFamily(
+        Font(R.font.pilat)
+    )
 
     Card(
         modifier = modifier
@@ -48,47 +53,47 @@ fun CompletedProjectCard(
             .clickable(onClick = {  }),
         colors = CardDefaults.cardColors(containerColor = mainAppColor)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()) {
                 Text(
                     text = project.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontFamily = customFont,
+                        fontWeight = FontWeight.Thin,
+                        letterSpacing = 1.7.sp,
+                        color = Color.Black
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 32.dp)
                 )
 
                 IconButton(
                     onClick = { showDeleteDialog.value = true },
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(Alignment.TopEnd)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color.Black)
+                        tint = Color.Black
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = project.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis)
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
                 text = "Due: ${project.dueDate}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Black)
+                color = Color.Black
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -96,7 +101,8 @@ fun CompletedProjectCard(
                 progress = 1f,
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black,
-                trackColor = Color.Gray)
+                trackColor = Color.Gray
+            )
         }
     }
 
@@ -117,6 +123,7 @@ fun CompletedProjectCard(
                 TextButton(onClick = { showDeleteDialog.value = false }) {
                     Text("No")
                 }
-            })
+            }
+        )
     }
 }

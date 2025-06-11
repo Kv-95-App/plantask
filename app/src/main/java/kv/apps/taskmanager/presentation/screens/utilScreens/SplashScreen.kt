@@ -6,25 +6,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kv.apps.taskmanager.presentation.navigation.Screen
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 
 @Composable
 fun SplashScreen(
     navController: NavController,
     authViewModel: AuthViewModel) {
-    val user = authViewModel.user.collectAsStateWithLifecycle().value
-    val isKeepLoggedIn = authViewModel.isKeepLoggedIn.collectAsStateWithLifecycle().value
-    val isLoggedIn = authViewModel.isLoggedIn.collectAsStateWithLifecycle().value
+    val user = authViewModel.uiState.collectAsState().value.user
+    val isKeepLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.isKeepLoggedIn
+    val isLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.userId != null
 
     LaunchedEffect(user, isKeepLoggedIn, isLoggedIn) {
-        delay(1000)
+        delay(500)
         val startDestination = if (user != null || isKeepLoggedIn == true || isLoggedIn == true) {
             Screen.ProjectList.route
         } else {

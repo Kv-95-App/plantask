@@ -41,7 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import kv.apps.taskmanager.R
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel.AuthEvent
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
@@ -60,18 +61,17 @@ fun LoginScreen(
     var keepLoggedIn by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    val isLoading by authViewModel.isLoading.collectAsState()
-    val errorMessage by authViewModel.errorMessage.collectAsState()
-    val user by authViewModel.user.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
+    val isLoading = uiState.isLoading
 
-    LaunchedEffect(user) {
-        if (user != null) {
-            onLoginSuccess()
-        }
-    }
-
-    LaunchedEffect(errorMessage) {
-        errorMessage?.let {
+    LaunchedEffect(Unit) {
+        authViewModel.events.collect { event ->
+            when (event) {
+                is AuthEvent.NavigateToHome -> onLoginSuccess()
+                is AuthEvent.Error -> {
+                }
+                else -> {}
+            }
         }
     }
 

@@ -119,10 +119,9 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout() {
         try {
             authRemoteDataSource.logout()
-            delay(1000)
         } catch (e: Exception) {
             Log.e("AuthRepository", "Logout error", e)
-            throw e
+            throw Exception("Logout failed: ${e.message}")
         }
     }
     @OptIn(ExperimentalCoroutinesApi::class)

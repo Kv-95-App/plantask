@@ -19,4 +19,6 @@ class TaskUseCases @Inject constructor(
     suspend fun filterTasksByDueDate(projectId: String, dueDate: LocalDate) = repository.filterTasksByDueDate(projectId, dueDate)
 
     suspend fun getTaskByIdFromProject(projectId: String, taskId: String) = repository.getTaskByIdFromProject(projectId, taskId)
+
+    suspend fun getProjectUsers(projectId: String) = repository.getProjectUsers(projectId)
 }

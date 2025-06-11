@@ -29,7 +29,7 @@ import kv.apps.taskmanager.presentation.shared.taskComposables.ProjectCard
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.SectionHeader
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.TaskViewModel
 import kv.apps.taskmanager.theme.backgroundColor
@@ -44,14 +44,14 @@ fun OngoingProjectsScreen (
     onAddProjectClicked: () -> Unit
 ) {
     val projects by projectViewModel.projects.collectAsState()
-    val userId by authViewModel.userId.collectAsState()
+    val userId by authViewModel.uiState.collectAsState()
     val isLoading by projectViewModel.loading.collectAsState()
 
     val filteredProjects = remember(projects, userId) {
         projects.filter { project ->
-            userId?.let { uid ->
+            userId.let { uid ->
                 project.createdBy == uid.toString() ||
-                        project.teamMembers.any { it == uid }
+                        project.teamMembers.any { it == uid.toString() }
             } == true
         }
     }
@@ -112,7 +112,13 @@ fun OngoingProjectsScreen (
                     CircularProgressIndicator()
                 }
             } else {
-                SectionHeader(title = "Ongoing Projects", onSeeAllClick = null)
+                SectionHeader(
+                    title = "Ongoing Projects", onSeeAllClick = null,
+                    isExpanded = false,
+                    onToggleClick = {},
+                    modifier = Modifier
+                        .padding(16.dp)
+                )
                 if (ongoingProjects.isEmpty()) {
                     Text(
                         text = "No ongoing projects",
@@ -132,8 +138,7 @@ fun OngoingProjectsScreen (
                                     val updatedProject = project.copy(isCompleted = true)
                                     projectViewModel.updateProject(project.id, updatedProject)
                                 },
-                                navController = navController,
-                                onProjectClicked = {}
+                                navController = navController
                             )
                         }
                     }

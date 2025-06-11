@@ -39,19 +39,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import kv.apps.taskmanager.R
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
 @Composable
 fun ForgotPasswordScreen(
-    navController: NavHostController, authViewModel: AuthViewModel
+    navController: NavHostController,
+    authViewModel: AuthViewModel
 ) {
     var email by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-
-    val isLoading by authViewModel.isLoading.collectAsState()
-    val errorMessage by authViewModel.errorMessage.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
+    val isLoading = uiState.isLoading
 
     Column(
         modifier = Modifier
@@ -104,9 +104,7 @@ fun ForgotPasswordScreen(
         Spacer(modifier = Modifier.height(40.dp))
 
         Button(
-            onClick = {
-                authViewModel.resetPassword(email)
-            },
+            onClick = { authViewModel.resetPassword(email) },
             colors = ButtonDefaults.buttonColors(containerColor = mainAppColor),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
@@ -126,16 +124,6 @@ fun ForgotPasswordScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        errorMessage?.let {
-            Text(
-                text = it,
-                color = if (it.contains("sent")) Color.Green else Color.Red,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(8.dp)
-            )
-        }
 
         TextButton(onClick = { navController.popBackStack() }) {
             Text(

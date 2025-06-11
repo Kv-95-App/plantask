@@ -1,7 +1,9 @@
 package kv.apps.taskmanager.data.repositoryImpl
 
+import kotlinx.coroutines.flow.Flow
 import kv.apps.taskmanager.data.remote.TaskRemoteDataSource
 import kv.apps.taskmanager.domain.model.Task
+import kv.apps.taskmanager.domain.model.User
 import kv.apps.taskmanager.domain.repository.TaskRepository
 import java.time.LocalDate
 import javax.inject.Inject
@@ -36,5 +38,9 @@ class TaskRepositoryImpl @Inject constructor(
 
     override suspend fun filterTasksByDueDate(projectId: String, date: LocalDate): List<Task> {
         return taskRemoteDataSource.filterTasksByDueDate(projectId, date)
+    }
+
+    override suspend fun getProjectUsers( projectId: String): Flow<List<User>> {
+        return taskRemoteDataSource.getProjectUsers(projectId)
     }
 }

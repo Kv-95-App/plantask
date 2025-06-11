@@ -1,6 +1,5 @@
 package kv.apps.taskmanager.presentation.screens.projectScreens
 
-import android.R.attr.onClick
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,9 +44,9 @@ import androidx.navigation.NavController
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
-import kv.apps.taskmanager.presentation.viewmodel.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
@@ -71,13 +70,13 @@ fun AddProjectScreen(
     var selectedFriends by remember { mutableStateOf<Set<String>>(emptySet()) }
     val focusManager = LocalFocusManager.current
 
-    val friendsState by userFriendsViewModel.friendsState.collectAsState()
-    val friends = remember(friendsState) {
-        friendsState?.getOrNull() ?: emptyList()
+    val friendsState by userFriendsViewModel.uiState.collectAsState()
+    val friends = remember(friendsState.friends) {
+        friendsState.friends?.getOrNull() ?: emptyList()
     }
 
     LaunchedEffect(Unit) {
-        val currentUserId = authViewModel.user.value?.uid
+        val currentUserId = authViewModel.uiState.value.user?.uid
         if (currentUserId != null) {
             userFriendsViewModel.getFriends(currentUserId)
         }
@@ -242,41 +241,55 @@ fun AddProjectScreen(
                 color = Color.White
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Column {
-                friends.forEach { friend ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedFriends = if (selectedFriends.contains(friend.friendId)) {
-                                    selectedFriends - friend.friendId
-                                } else {
-                                    selectedFriends + friend.friendId
-                                }
+
+            when {
+                friendsState.isLoadingFriends -> {
+                }
+                friendsState.friends?.isFailure == true -> {
+                    Text(
+                        text = "Failed to load friends",
+                        color = Color.Red,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+                else -> {
+                    Column {
+                        friends.forEach { friend ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedFriends = if (selectedFriends.contains(friend.friendId)) {
+                                            selectedFriends - friend.friendId
+                                        } else {
+                                            selectedFriends + friend.friendId
+                                        }
+                                    }
+                                    .padding(8.dp)
+                            ) {
+                                Checkbox(
+                                    checked = selectedFriends.contains(friend.friendId),
+                                    onCheckedChange = { isChecked ->
+                                        selectedFriends = if (isChecked) {
+                                            selectedFriends + friend.friendId
+                                        } else {
+                                            selectedFriends - friend.friendId
+                                        }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = mainAppColor,
+                                        uncheckedColor = Color.White
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = friend.friendName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White
+                                )
                             }
-                            .padding(8.dp)
-                    ) {
-                        Checkbox(
-                            checked = selectedFriends.contains(friend.friendId),
-                            onCheckedChange = { isChecked ->
-                                selectedFriends = if (isChecked) {
-                                    selectedFriends + friend.friendId
-                                } else {
-                                    selectedFriends - friend.friendId
-                                }
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = mainAppColor,
-                                uncheckedColor = Color.White
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = friend.friendName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White
-                        )
+                        }
                     }
                 }
             }
@@ -310,7 +323,7 @@ fun AddProjectScreen(
                         if (title.isBlank() || description.isBlank() || dueDate == null || isPastDate) {
                             showError = true
                         } else {
-                            val currentUserId = authViewModel.user.value?.uid ?: ""
+                            val currentUserId = authViewModel.uiState.value.user?.uid ?: ""
                             val projectId = UUID.randomUUID().toString()
 
                             val newProject = Project(

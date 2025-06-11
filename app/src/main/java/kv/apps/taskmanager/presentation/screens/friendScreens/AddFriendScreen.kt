@@ -46,8 +46,9 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
-import kv.apps.taskmanager.presentation.viewmodel.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsStateType
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
@@ -62,20 +63,21 @@ fun AddFriendScreen(
     var friendEmail by remember { mutableStateOf("") }
     var isEmailValid by remember { mutableStateOf(true) }
 
-    val addFriendState by userFriendsViewModel.addFriendState.collectAsState()
-    val isLoading by userFriendsViewModel.isLoadingFriends.collectAsState()
+    val uiState = userFriendsViewModel.uiState.collectAsState()
+    val addFriendState = uiState.value.addFriendState
+    val isLoading = uiState.value.isLoading
 
     val validateEmail = { email: String ->
         email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
-    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val currentUserId = authViewModel.uiState.collectAsState().value.userId
 
     val handleAddFriend = {
         if (validateEmail(friendEmail)) {
             isEmailValid = true
             if (currentUserId != null) {
-                userFriendsViewModel.addFriend(currentUserId!!, friendEmail)
+                userFriendsViewModel.addFriend(currentUserId, friendEmail)
                 focusManager.clearFocus()
             }
         } else {
@@ -86,7 +88,7 @@ fun AddFriendScreen(
     LaunchedEffect(addFriendState) {
         if (addFriendState != null) {
             delay(3000)
-            userFriendsViewModel.resetState(addFriendState.toString())
+            userFriendsViewModel.resetState(UserFriendsStateType.ADD_FRIEND)
         }
     }
 

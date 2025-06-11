@@ -4,14 +4,15 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
-import kv.apps.taskmanager.domain.repository.ProjectRepository
+import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.usecase.projectsUseCases.ProjectUseCases
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -20,25 +21,34 @@ class ProjectViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _projects = MutableStateFlow<List<Project>>(emptyList())
-    val projects: StateFlow<List<Project>> = _projects
-
-    private val _loading = MutableStateFlow(false)
-    val loading: StateFlow<Boolean> = _loading
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
+    val projects: StateFlow<List<Project>> = _projects.asStateFlow()
 
     private val _selectedProject = MutableStateFlow<Project?>(null)
-    val selectedProject: StateFlow<Project?> = _selectedProject
+    val selectedProject: StateFlow<Project?> = _selectedProject.asStateFlow()
+
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     private val _teamMembers = MutableStateFlow<List<String>>(emptyList())
-    val teamMembers: StateFlow<List<String>> = _teamMembers
+    val teamMembers: StateFlow<List<String>> = _teamMembers.asStateFlow()
+
+    private val _teamMembersWithDetails = MutableStateFlow<List<TeamMember>>(emptyList())
+    val teamMembersWithDetails: StateFlow<List<TeamMember>> = _teamMembersWithDetails.asStateFlow()
+
+    private val _teamMembersLoading = MutableStateFlow(false)
+    val teamMembersLoading: StateFlow<Boolean> = _teamMembersLoading.asStateFlow()
+
+    private val _teamMembersError = MutableStateFlow<String?>(null)
+    val teamMembersError: StateFlow<String?> = _teamMembersError.asStateFlow()
 
     private val _invitations = MutableStateFlow<List<ProjectInvitation>>(emptyList())
-    val invitations: StateFlow<List<ProjectInvitation>> = _invitations
+    val invitations: StateFlow<List<ProjectInvitation>> = _invitations.asStateFlow()
 
     private val _invitationActionState = MutableStateFlow<Result<Unit>?>(null)
-    val invitationActionState: StateFlow<Result<Unit>?> = _invitationActionState
+    val invitationActionState: StateFlow<Result<Unit>?> = _invitationActionState.asStateFlow()
 
     private val _creatorNamesCache = mutableStateMapOf<String, Pair<String, String>>()
     val creatorNamesCache: Map<String, Pair<String, String>> get() = _creatorNamesCache
@@ -46,33 +56,37 @@ class ProjectViewModel @Inject constructor(
     private val _projectTitlesCache = mutableStateMapOf<String, String>()
     val projectTitlesCache: Map<String, String> get() = _projectTitlesCache
 
-    fun fetchProjectTitle(projectId: String) {
-        if (_projectTitlesCache.containsKey(projectId)) return
+    private val _teamMembersCache = mutableStateMapOf<String, List<TeamMember>>()
 
-        viewModelScope.launch {
-            _loading.value = true
-            projectUseCases.getProjectById(projectId)
-                .onSuccess { project ->
-                    _projectTitlesCache[projectId] = project.title
-                }
-                .onFailure { e ->
-                }
-            _loading.value = false
+    private val _ownerDetails = MutableStateFlow<Pair<String, String>?>(null)
+    val ownerDetails: StateFlow<Pair<String, String>?> = _ownerDetails.asStateFlow()
+
+    private val _memberDetails = MutableStateFlow<Pair<String, String>?>(null)
+    val memberDetails: StateFlow<Pair<String, String>?> = _memberDetails.asStateFlow()
+
+    private val _projectTeamMembers = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+    val projectTeamMembers: StateFlow<Map<String, List<String>>> = _projectTeamMembers.asStateFlow()
+
+    fun fetchTeamMembersForProject(projectId: String) {
+        _teamMembersCache[projectId]?.let { cachedMembers ->
+            _teamMembersWithDetails.value = cachedMembers
+            return
         }
-    }
 
+        _teamMembersLoading.value = true
+        _teamMembersError.value = null
 
-    fun fetchCreatorName(userId: String) {
-        if (_creatorNamesCache.containsKey(userId)) return
         viewModelScope.launch {
-            _loading.value = true
-            projectUseCases.getProjectCreatorDetails(userId)
-                .onSuccess { names ->
-                    _creatorNamesCache[userId] = names
-                }
-                .onFailure { e ->
-                }
-            _loading.value = false
+            try {
+                val result = projectUseCases.getTeamMembersForProject(projectId)
+                _teamMembersWithDetails.value = result
+                _teamMembersCache[projectId] = result
+                _teamMembers.value = result.map { it.userId }
+            } catch (e: Exception) {
+                _teamMembersError.value = "Failed to load team members: ${e.message}"
+            } finally {
+                _teamMembersLoading.value = false
+            }
         }
     }
 
@@ -103,6 +117,8 @@ class ProjectViewModel @Inject constructor(
                 projectUseCases.getProjectById(projectId)
                     .onSuccess { project ->
                         _selectedProject.value = project
+                        loadOwnerDetails(project.createdBy)
+                        fetchTeamMembersForProject(projectId)
                         _error.value = null
                     }
                     .onFailure { e ->
@@ -120,20 +136,20 @@ class ProjectViewModel @Inject constructor(
         _loading.value = true
         viewModelScope.launch {
             try {
-                val newProjectId = project.id.ifEmpty { "temp-${System.currentTimeMillis()}" }
-                _projects.value = _projects.value + project.copy(id = newProjectId)
+                val tempProjectId = project.id.ifEmpty { "temp-${System.currentTimeMillis()}" }
+                _projects.value = _projects.value + project.copy(id = tempProjectId)
 
                 projectUseCases.createProject(project)
                     .onSuccess { actualId ->
                         _projects.value = _projects.value.map {
-                            if (it.id == newProjectId) it.copy(id = actualId) else it
+                            if (it.id == tempProjectId) it.copy(id = actualId) else it
                         }
                         _error.value = null
                         fetchAllProjects()
                     }
                     .onFailure { e ->
                         _error.value = "Failed to create project: ${e.message}"
-                        _projects.value = _projects.value.filter { it.id != newProjectId }
+                        _projects.value = _projects.value.filter { it.id != tempProjectId }
                         fetchAllProjects()
                     }
             } catch (e: Exception) {
@@ -175,7 +191,6 @@ class ProjectViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _projects.value = _projects.value.filter { it.id != projectId }
-
                 projectUseCases.deleteProject(projectId)
                     .onSuccess {
                         _error.value = null
@@ -194,34 +209,6 @@ class ProjectViewModel @Inject constructor(
         }
     }
 
-    fun addTeamMembersToProject(projectId: String, teamMembers: List<String>) {
-        _loading.value = true
-        viewModelScope.launch {
-            try {
-                _projects.value = _projects.value.map { project ->
-                    if (project.id == projectId) {
-                        project.copy(teamMembers = project.teamMembers + teamMembers)
-                    } else project
-                }
-
-                projectUseCases.addTeamMembersToProject(projectId, teamMembers)
-                    .onSuccess {
-                        fetchTeamMembersForProject(projectId)
-                        _error.value = null
-                        fetchAllProjects()
-                    }
-                    .onFailure { e ->
-                        _error.value = "Failed to add team members: ${e.message}"
-                        fetchAllProjects()
-                    }
-            } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
-                fetchAllProjects()
-            } finally {
-                _loading.value = false
-            }
-        }
-    }
 
     fun removeTeamMembersFromProject(projectId: String, teamMemberId: String) {
         _loading.value = true
@@ -252,23 +239,54 @@ class ProjectViewModel @Inject constructor(
         }
     }
 
-    fun fetchTeamMembersForProject(projectId: String) {
-        _loading.value = true
+    fun loadOwnerDetails(userId: String) {
+        if (_creatorNamesCache.containsKey(userId)) {
+            _ownerDetails.value = _creatorNamesCache[userId]
+            return
+        }
+
         viewModelScope.launch {
-            try {
-                projectUseCases.getTeamMembersForProject(projectId)
-                    .onSuccess { members ->
-                        _teamMembers.value = members
-                        _error.value = null
-                    }
-                    .onFailure { e ->
-                        _error.value = "Failed to fetch team members: ${e.message}"
-                    }
-            } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
-            } finally {
-                _loading.value = false
-            }
+            _loading.value = true
+            projectUseCases.getProjectCreatorDetails(userId)
+                .onSuccess { names ->
+                    _creatorNamesCache[userId] = names
+                    _ownerDetails.value = names
+                }
+                .onFailure { e ->
+                    _error.value = "Failed to load owner details: ${e.message}"
+                }
+            _loading.value = false
+        }
+    }
+
+
+    fun fetchCreatorName(userId: String) {
+        if (_creatorNamesCache.containsKey(userId)) return
+        viewModelScope.launch {
+            _loading.value = true
+            projectUseCases.getProjectCreatorDetails(userId)
+                .onSuccess { names ->
+                    _creatorNamesCache[userId] = names
+                }
+                .onFailure { e ->
+                    // Silent failure as this might be called frequently
+                }
+            _loading.value = false
+        }
+    }
+
+    fun fetchProjectTitle(projectId: String) {
+        if (_projectTitlesCache.containsKey(projectId)) return
+        viewModelScope.launch {
+            _loading.value = true
+            projectUseCases.getProjectById(projectId)
+                .onSuccess { project ->
+                    _projectTitlesCache[projectId] = project.title
+                }
+                .onFailure { e ->
+                    // Silent failure as this might be called frequently
+                }
+            _loading.value = false
         }
     }
 
@@ -343,10 +361,6 @@ class ProjectViewModel @Inject constructor(
                 }
             _loading.value = false
         }
-    }
-
-    fun selectProject(project: Project) {
-        _selectedProject.value = project
     }
 
     fun clearInvitationActionState() {

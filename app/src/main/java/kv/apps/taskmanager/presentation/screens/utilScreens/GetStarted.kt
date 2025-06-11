@@ -55,7 +55,8 @@ fun GetStartedScreen(navController: NavController) {
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 80.dp)
+                modifier = Modifier
+                    .padding(bottom = 80.dp)
             ) {
                 Text(
                     text = "Manage your Tasks with",

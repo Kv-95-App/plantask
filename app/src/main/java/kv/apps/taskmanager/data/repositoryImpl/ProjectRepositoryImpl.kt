@@ -3,6 +3,7 @@ package kv.apps.taskmanager.data.repositoryImpl
 import kv.apps.taskmanager.data.remote.ProjectRemoteDataSource
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
+import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.repository.ProjectRepository
 import javax.inject.Inject
 
@@ -60,7 +61,7 @@ class ProjectRepositoryImpl @Inject constructor(
         return projectRemoteDataSource.removeTeamMembersFromProject(projectId, teamMemberId)
     }
 
-    override suspend fun getTeamMembersForProject(projectId: String): Result<List<String>> {
+    override suspend fun getTeamMembersForProject(projectId: String): List<TeamMember> {
         return projectRemoteDataSource.getTeamMembersForProject(projectId)
     }
 
