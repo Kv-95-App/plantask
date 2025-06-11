@@ -1,7 +1,6 @@
 package kv.apps.taskmanager.presentation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -27,7 +26,7 @@ import kv.apps.taskmanager.presentation.screens.utilScreens.NotificationsScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.SplashScreen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
-import kv.apps.taskmanager.presentation.viewmodel.TaskViewModel
+import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 
 @Composable
@@ -106,7 +105,6 @@ fun NavGraph(
                 projectId = projectId,
                 projectViewModel = projectViewModel,
                 taskViewModel = taskViewModel,
-                userFriendsViewModel = userFriendsViewModel,
                 authViewModel = authViewModel
             )
         }

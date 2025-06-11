@@ -58,9 +58,8 @@ import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
-import kv.apps.taskmanager.presentation.viewmodel.TaskViewModel
+import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
@@ -74,13 +73,13 @@ fun ProjectDetailScreen(
     projectId: String,
     projectViewModel: ProjectViewModel,
     taskViewModel: TaskViewModel,
-    userFriendsViewModel: UserFriendsViewModel,
     authViewModel: AuthViewModel
 ) {
     val project by projectViewModel.selectedProject.collectAsState()
     val loading by projectViewModel.loading.collectAsState()
     val error by projectViewModel.error.collectAsState()
-    val tasks by taskViewModel.tasks.collectAsState()
+    val uiState = taskViewModel.uiState.collectAsState()
+    val tasks = uiState.value.tasks.filter { it.projectId == projectId }
 
     var hasLoaded by remember { mutableStateOf(false) }
     val showProjectNotFound by remember(hasLoaded, project) {

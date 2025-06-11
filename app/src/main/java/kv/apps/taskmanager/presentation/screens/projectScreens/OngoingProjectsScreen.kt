@@ -31,7 +31,7 @@ import kv.apps.taskmanager.presentation.shared.uiComposables.SectionHeader
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
-import kv.apps.taskmanager.presentation.viewmodel.TaskViewModel
+import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
