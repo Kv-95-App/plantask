@@ -7,10 +7,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
@@ -33,7 +34,7 @@ fun TaskDetailScreen(
                 onProfileClicked = { },
                 onLogoutClicked = {
                     authViewModel.logout()
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo("login") { inclusive = true }
                     }
                 },

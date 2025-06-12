@@ -57,7 +57,7 @@ import kv.apps.taskmanager.R
 import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
@@ -121,7 +121,7 @@ fun ProjectDetailScreen(
                 onProfileClicked = { },
                 onLogoutClicked = {
                     authViewModel.logout()
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo("login") { inclusive = true }
                     }
                 },

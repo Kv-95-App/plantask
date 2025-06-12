@@ -39,13 +39,14 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.taskComposables.CompletedProjectCard
 import kv.apps.taskmanager.presentation.shared.taskComposables.ProjectCard
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.SectionHeader
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
@@ -95,10 +96,10 @@ fun ProjectListScreen(
         topBar = {
             TopBar(
                 navController = navController,
-                onProfileClicked = { navController.navigate("profile") },
+                onProfileClicked = { navController.navigate(Screen.Profile.route) },
                 onLogoutClicked = {
                     authViewModel.logout()
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo("login") { inclusive = true }
                     }
                 }
@@ -162,7 +163,7 @@ fun ProjectListScreen(
                     title = "Completed Projects (${completedProjects.size})",
                     isExpanded = completedExpanded,
                     onToggleClick = { completedExpanded = !completedExpanded },
-                    onSeeAllClick = { navController.navigate("completed_projects") }
+                    onSeeAllClick = { navController.navigate(Screen.CompletedProjects.route) }
                 )
 
                 if (completedExpanded) {
@@ -195,7 +196,7 @@ fun ProjectListScreen(
                     title = "Ongoing Projects (${ongoingProjects.size})",
                     isExpanded = ongoingExpanded,
                     onToggleClick = { ongoingExpanded = !ongoingExpanded },
-                    onSeeAllClick = { navController.navigate("ongoing_projects") }
+                    onSeeAllClick = { navController.navigate(Screen.OngoingProjects.route) }
                 )
 
                 if (ongoingExpanded) {

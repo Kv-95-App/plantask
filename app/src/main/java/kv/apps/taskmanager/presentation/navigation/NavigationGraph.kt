@@ -25,7 +25,7 @@ import kv.apps.taskmanager.presentation.screens.utilScreens.GetStartedScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.NotificationsScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.SplashScreen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 
@@ -186,7 +186,8 @@ fun NavGraph(
                 navController = navController,
                 projectId = backStackEntry.arguments?.getString("projectId") ?: "" ,
                 taskViewModel = taskViewModel,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                projectViewModel = projectViewModel
             )
         }
 
@@ -218,8 +219,7 @@ fun NavGraph(
 
         composable(route = Screen.GetStarted.route) {
             GetStartedScreen(
-                navController = navController,
-
+                navController = navController
                 )
         }
 

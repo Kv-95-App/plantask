@@ -43,9 +43,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
@@ -118,7 +119,7 @@ fun AddProjectScreen(
                 onProfileClicked = { },
                 onLogoutClicked = {
                     authViewModel.logout()
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo("login") { inclusive = true }
                     }
                 },

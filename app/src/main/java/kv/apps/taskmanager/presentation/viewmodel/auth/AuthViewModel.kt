@@ -231,7 +231,6 @@ class AuthViewModel @Inject constructor(
     private suspend fun emitError(type: AuthErrorType, message: String) {
         _events.emit(AuthEvent.Error(type, message))
     }
-
     sealed class AuthEvent {
         object NavigateToLogin : AuthEvent()
         object NavigateToHome : AuthEvent()

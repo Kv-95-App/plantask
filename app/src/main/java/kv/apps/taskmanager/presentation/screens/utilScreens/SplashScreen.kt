@@ -19,10 +19,12 @@ import kv.apps.taskmanager.theme.backgroundColor
 @Composable
 fun SplashScreen(
     navController: NavController,
-    authViewModel: AuthViewModel) {
-    val user = authViewModel.uiState.collectAsState().value.user
-    val isKeepLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.isKeepLoggedIn
-    val isLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.userId != null
+    authViewModel: AuthViewModel
+) {
+    val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
+    val user = uiState.value.user
+    val isKeepLoggedIn = uiState.value.isKeepLoggedIn
+    val isLoggedIn = uiState.value.userId != null
 
     LaunchedEffect(user, isKeepLoggedIn, isLoggedIn) {
         delay(500)

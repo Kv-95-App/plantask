@@ -28,9 +28,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.theme.onGoingCardColor
@@ -55,9 +56,9 @@ fun ProjectMembers(
         topBar = {
             TopBar(
                 onBackPressed = onBackPressed,
-                onProfileClicked = { navController.navigate("profile") },
+                onProfileClicked = { navController.navigate(Screen.Profile.route) },
                 onLogoutClicked = {
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo("login") { inclusive = true }
                     }
                 },

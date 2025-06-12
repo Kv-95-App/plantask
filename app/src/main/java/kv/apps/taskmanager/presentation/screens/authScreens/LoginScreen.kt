@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import kv.apps.taskmanager.R
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel.AuthEvent
 import kv.apps.taskmanager.theme.backgroundColor
@@ -51,7 +52,7 @@ fun LoginScreen(
     navController: NavHostController,
     authViewModel: AuthViewModel,
     onLoginSuccess: () -> Unit = {
-        navController.navigate("project_list") {
+        navController.navigate(Screen.ProjectList.route) {
             popUpTo("login") { inclusive = true }
         }
     }
@@ -179,7 +180,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(
-            onClick = { navController.navigate("forgot_password") }
+            onClick = { navController.navigate(Screen.ForgotPassword.route) }
         ) {
             Text(
                 text = "Forgot Password?",
@@ -200,7 +201,7 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             TextButton(
-                onClick = { navController.navigate("register") }
+                onClick = { navController.navigate(Screen.Register.route) }
             ) {
                 Text(
                     text = "Register",

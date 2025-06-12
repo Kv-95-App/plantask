@@ -21,12 +21,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.taskComposables.CompletedProjectCard
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.SectionHeader
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 
@@ -64,10 +65,10 @@ fun CompletedProjectsScreen(
         topBar = {
             TopBar(
                 navController = navController,
-                onProfileClicked = { navController.navigate("profile") },
+                onProfileClicked = { navController.navigate(Screen.Profile.route) },
                 onLogoutClicked = {
                     authViewModel.logout()
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo("login") { inclusive = true }
                     }
                 },

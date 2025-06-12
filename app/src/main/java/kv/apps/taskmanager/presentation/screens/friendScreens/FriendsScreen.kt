@@ -183,9 +183,9 @@ fun FriendsScreen(
                 ) {
                     TopBar(
                         navController = navController,
-                        onProfileClicked = { /* Handle profile click */ },
+                        onProfileClicked = { Screen.Profile.route },
                         onLogoutClicked = {
-                            navController.navigate("login") {
+                            navController.navigate(Screen.Login.route) {
                                 popUpTo("login") { inclusive = true }
                             }
                         },
@@ -291,7 +291,7 @@ fun FriendsScreen(
                                         FriendCard(
                                             friend = friend,
                                             onClick = {
-                                                navController.navigate("friendDetail/${friend.friendId}") // Use friendId
+                                                navController.navigate("")
                                             },
                                             modifier = Modifier.padding(8.dp),
                                             currentUserId = nonNullCurrentUserId ?: "",

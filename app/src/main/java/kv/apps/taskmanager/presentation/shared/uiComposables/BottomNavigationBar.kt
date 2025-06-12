@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavController
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.utils.MyIcons
 
@@ -29,20 +30,20 @@ fun BottomNavigationBar(navController: NavController) {
                 Icon(
                     Icons.Default.Home,
                     contentDescription = "Home",
-                    tint = if (currentRoute == "project_list") selectedColor else defaultColor
+                    tint = if (currentRoute == Screen.ProjectList.route) selectedColor else defaultColor
                 )
             },
             label = {
                 Text(
                     "Home",
-                    color = if (currentRoute == "project_list") selectedTextColor else defaultColor
+                    color = if (currentRoute == Screen.ProjectList.route) selectedTextColor else defaultColor
                 )
             },
             selected = false,
             alwaysShowLabel = true,
             onClick = {
-                if (currentRoute != "project_list") {
-                    navController.navigate("project_list")
+                if (currentRoute != Screen.ProjectList.route) {
+                    navController.navigate(Screen.ProjectList.route)
                 }
             }
         )
@@ -52,20 +53,20 @@ fun BottomNavigationBar(navController: NavController) {
                 Icon(
                     imageVector = MyIcons.friends(),
                     contentDescription = "Friends",
-                    tint = if (currentRoute == "friends") selectedColor else defaultColor
+                    tint = if (currentRoute == Screen.Friends.route) selectedColor else defaultColor
                 )
             },
             label = {
                 Text(
                     "Friends",
-                    color = if (currentRoute == "friends") selectedTextColor else defaultColor
+                    color = if (currentRoute == Screen.Friends.route) selectedTextColor else defaultColor
                 )
             },
             selected = false,
             alwaysShowLabel = true,
             onClick = {
-                if (currentRoute != "friends") {
-                    navController.navigate("friends")
+                if (currentRoute != Screen.Friends.route) {
+                    navController.navigate(Screen.Friends.route)
                 }
             }
         )
@@ -75,20 +76,20 @@ fun BottomNavigationBar(navController: NavController) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = "Notifications",
-                    tint = if (currentRoute == "notifications") selectedColor else defaultColor
+                    tint = if (currentRoute == Screen.Notifications.route) selectedColor else defaultColor
                 )
             },
             label = {
                 Text(
                     "Notifications",
-                    color = if (currentRoute == "notifications") selectedTextColor else defaultColor
+                    color = if (currentRoute == Screen.Notifications.route) selectedTextColor else defaultColor
                 )
             },
             selected = false,
             alwaysShowLabel = true,
             onClick = {
-                if (currentRoute != "notifications") {
-                    navController.navigate("notifications")
+                if (currentRoute != Screen.Notifications.route) {
+                    navController.navigate(Screen.Notifications.route)
                 }
             }
         )

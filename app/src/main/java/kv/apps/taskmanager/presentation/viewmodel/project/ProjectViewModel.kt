@@ -1,4 +1,4 @@
-package kv.apps.taskmanager.presentation.viewmodel
+package kv.apps.taskmanager.presentation.viewmodel.project
 
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
@@ -12,7 +12,6 @@ import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.usecase.projectsUseCases.ProjectUseCases
-import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -269,7 +268,6 @@ class ProjectViewModel @Inject constructor(
                     _creatorNamesCache[userId] = names
                 }
                 .onFailure { e ->
-                    // Silent failure as this might be called frequently
                 }
             _loading.value = false
         }
@@ -284,7 +282,6 @@ class ProjectViewModel @Inject constructor(
                     _projectTitlesCache[projectId] = project.title
                 }
                 .onFailure { e ->
-                    // Silent failure as this might be called frequently
                 }
             _loading.value = false
         }

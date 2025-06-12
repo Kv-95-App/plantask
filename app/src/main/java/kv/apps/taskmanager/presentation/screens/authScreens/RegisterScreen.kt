@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.R
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
@@ -85,7 +86,7 @@ fun RegisterScreen(
         authViewModel.events.collect { event ->
             when (event) {
                 is AuthViewModel.AuthEvent.RegistrationSuccess -> {
-                    navController.navigate("login") {
+                    navController.navigate(Screen.Register.route) {
                         popUpTo("register") { inclusive = true }
                     }
                 }
@@ -265,7 +266,7 @@ fun RegisterScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
-                        onClick = { navController.navigate("login") }
+                        onClick = { navController.navigate(Screen.Login.route) }
                     ) {
                         Text(
                             text = "Login",

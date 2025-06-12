@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
@@ -106,9 +107,9 @@ fun AddFriendScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 TopBar(
                     navController = navController,
-                    onProfileClicked = { /* Handle profile click */ },
+                    onProfileClicked = { Screen.Profile.route },
                     onLogoutClicked = {
-                        navController.navigate("login") {
+                        navController.navigate(Screen.Login.route) {
                             popUpTo("login") { inclusive = true }
                         }
                     },

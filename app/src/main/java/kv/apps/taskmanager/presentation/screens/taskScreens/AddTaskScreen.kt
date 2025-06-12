@@ -47,7 +47,7 @@ import androidx.navigation.NavController
 import kv.apps.taskmanager.domain.model.Task
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
@@ -59,9 +59,9 @@ import java.util.Calendar
 fun AddTaskScreen(
     navController: NavController,
     projectId: String,
-    authViewModel: AuthViewModel = hiltViewModel(),
-    taskViewModel: TaskViewModel = hiltViewModel(),
-    projectViewModel: ProjectViewModel = hiltViewModel()
+    authViewModel: AuthViewModel ,
+    taskViewModel: TaskViewModel ,
+    projectViewModel: ProjectViewModel
 ) {
     var title by remember { mutableStateOf("") }
     var taskDetails by remember { mutableStateOf("") }
