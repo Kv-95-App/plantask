@@ -20,18 +20,21 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +47,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kv.apps.taskmanager.presentation.navigation.Screen
+import kv.apps.taskmanager.presentation.shared.uiComposables.AppDrawer
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
@@ -59,6 +65,8 @@ fun AddFriendScreen(
     authViewModel: AuthViewModel,
 ) {
     val focusManager = LocalFocusManager.current
+    val currentUserId = authViewModel.uiState.collectAsState().value.userId
+    val isLoggingOut = authViewModel.uiState.collectAsState().value.isLoggingOut
 
     var friendEmail by remember { mutableStateOf("") }
     var isEmailValid by remember { mutableStateOf(true) }
@@ -67,11 +75,13 @@ fun AddFriendScreen(
     val addFriendState = uiState.value.addFriendState
     val isLoading = uiState.value.isLoading
 
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
+
+
     val validateEmail = { email: String ->
         email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
-
-    val currentUserId = authViewModel.uiState.collectAsState().value.userId
 
     val handleAddFriend = {
         if (validateEmail(friendEmail)) {
@@ -92,152 +102,163 @@ fun AddFriendScreen(
         }
     }
 
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) },
-        containerColor = backgroundColor
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .clickable { focusManager.clearFocus() },
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                TopBar(
-                    navController = navController,
-                    onProfileClicked = { /* Handle profile click */ },
-                    onLogoutClicked = {
-                        navController.navigate("login") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    },
-                    showBackArrow = true,
-                    onBackPressed = { navController.popBackStack() }
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Add Friend",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = Color(0xFFFFC107)
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text(
-                        text = "Enter your friend's email address to send them a friend request",
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    OutlinedTextField(
-                        value = friendEmail,
-                        onValueChange = {
-                            friendEmail = it
-                            if (!isEmailValid) {
-                                isEmailValid = true
-                            }
+    AppDrawer(
+        onProfileClicked = { navController.navigate(Screen.Profile.route) },
+        onLogoutClicked = {
+            authViewModel.logout()
+            navController.navigate(Screen.Login.route) {
+                popUpTo("login") { inclusive = true }
+            }
+        },
+        drawerState = drawerState,
+        isLoggingOut = isLoggingOut
+    ) {
+        Scaffold(
+            bottomBar = { BottomNavigationBar(navController) },
+            containerColor = backgroundColor
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .clickable { focusManager.clearFocus() },
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    TopBar(
+                        navController = navController,
+                        onMenuClicked = { coroutineScope.launch {
+                            drawerState.open()  }
                         },
-                        label = { Text("Friend's Email") },
-                        isError = !isEmailValid,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { handleAddFriend() }
-                        ),
-                        trailingIcon = {
-                            if (friendEmail.isNotEmpty()) {
-                                IconButton(onClick = { friendEmail = "" }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Clear",
-                                        tint = mainAppColor
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = mainAppColor,
-                            unfocusedBorderColor = Color.Gray,
-                            errorBorderColor = Color.Red,
-                            cursorColor = mainAppColor,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
+                        showBackArrow = true,
+                        onBackPressed = { navController.popBackStack() },
+                        isLoggingOut = isLoggingOut,
+                        modifier = Modifier.padding(top = 24.dp)
                     )
 
-                    if (!isEmailValid) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
                         Text(
-                            text = "Please enter a valid email address",
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            text = "Add Friend",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp,
+                            color = Color(0xFFFFC107)
                         )
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    Button(
-                        onClick = { handleAddFriend() },
-                        enabled = !isLoading && currentUserId != null,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = mainAppColor,
-                            disabledContainerColor = Color.Gray,
-                            contentColor = Color.Black
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
+                        Text(
+                            text = "Enter your friend's email address to send them a friend request",
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        OutlinedTextField(
+                            value = friendEmail,
+                            onValueChange = {
+                                friendEmail = it
+                                if (!isEmailValid) {
+                                    isEmailValid = true
+                                }
+                            },
+                            label = { Text("Friend's Email") },
+                            isError = !isEmailValid,
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = { handleAddFriend() }
+                            ),
+                            trailingIcon = {
+                                if (friendEmail.isNotEmpty()) {
+                                    IconButton(onClick = { friendEmail = "" }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Clear",
+                                            tint = mainAppColor
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = mainAppColor,
+                                unfocusedBorderColor = Color.Gray,
+                                errorBorderColor = Color.Red,
+                                cursorColor = mainAppColor,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
                             )
-                        } else {
-                            Text("Send Friend Request", fontSize = 16.sp)
-                        }
-                    }
+                        )
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    AnimatedVisibility(
-                        visible = addFriendState != null
-                    ) {
-                        val result = addFriendState
-                        val (message, color) = if (result?.isSuccess == true) {
-                            "Friend request sent successfully!" to Color.Green
-                        } else {
-                            val errorMsg = result?.exceptionOrNull()?.message ?: "Failed to send friend request"
-                            errorMsg to Color.Red
+                        if (!isEmailValid) {
+                            Text(
+                                text = "Please enter a valid email address",
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
                         }
 
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = color.copy(alpha = 0.1f)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { handleAddFriend() },
+                            enabled = !isLoading && currentUserId != null,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = mainAppColor,
+                                disabledContainerColor = Color.Gray,
+                                contentColor = Color.Black
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = message,
-                                    color = color,
-                                    fontSize = 16.sp
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
                                 )
+                            } else {
+                                Text("Send Friend Request", fontSize = 16.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        AnimatedVisibility(
+                            visible = addFriendState != null
+                        ) {
+                            val result = addFriendState
+                            val (message, color) = if (result?.isSuccess == true) {
+                                "Friend request sent successfully!" to Color.Green
+                            } else {
+                                val errorMsg = result?.exceptionOrNull()?.message ?: "Failed to send friend request"
+                                errorMsg to Color.Red
+                            }
+
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = color.copy(alpha = 0.1f)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = message,
+                                        color = color,
+                                        fontSize = 16.sp
+                                    )
+                                }
                             }
                         }
                     }

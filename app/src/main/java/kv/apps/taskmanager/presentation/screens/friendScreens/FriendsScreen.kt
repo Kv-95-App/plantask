@@ -1,6 +1,6 @@
 package kv.apps.taskmanager.presentation.screens.friendScreens
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,45 +12,43 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.shared.friendsComposables.FriendCard
 import kv.apps.taskmanager.presentation.shared.friendsComposables.PendingFriendRequestCard
+import kv.apps.taskmanager.presentation.shared.uiComposables.AppDrawer
 import kv.apps.taskmanager.presentation.shared.uiComposables.BottomNavigationBar
 import kv.apps.taskmanager.presentation.shared.uiComposables.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsStateType
+import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsEvent
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
@@ -61,171 +59,168 @@ fun FriendsScreen(
     userFriendsViewModel: UserFriendsViewModel,
     authViewModel: AuthViewModel
 ) {
-    val focusManager = LocalFocusManager.current
     val currentUserId = authViewModel.uiState.collectAsState().value.userId
+    val hasUserId = currentUserId != null
 
-    val nonNullCurrentUserId = currentUserId
+    val uiState by userFriendsViewModel.uiState.collectAsState()
+    val friendsState = uiState.friends
+    val pendingRequestsState = uiState.pendingFriendRequests
+    val isLoading = uiState.isLoading
 
-    val uiState = userFriendsViewModel.uiState.collectAsState()
-    val friendsState = uiState.value.friends
-    val pendingFriendRequestsState = uiState.value.pendingFriendRequests
-    val isLoading = uiState.value.isLoading
-    val acceptFriendRequestState = uiState.value.acceptFriendRequestState
-    val rejectFriendRequestState = uiState.value.rejectFriendRequestState
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    val friendsList by remember {
-        derivedStateOf {
-            friendsState?.getOrNull() ?: emptyList()
-        }
-    }
-    val pendingRequests by remember {
-        derivedStateOf {
-            pendingFriendRequestsState?.getOrNull() ?: emptyList()
-        }
-    }
-
-    var showSnackBar by remember { mutableStateOf(false) }
-    var snackBarMessage by remember { mutableStateOf("") }
-
-    LaunchedEffect(nonNullCurrentUserId) {
-        nonNullCurrentUserId?.let { userId ->
-            userFriendsViewModel.getFriends(userId)
-            userFriendsViewModel.getPendingFriendRequests(userId)
-        }
-    }
-
-    LaunchedEffect(acceptFriendRequestState) {
-        when {
-            acceptFriendRequestState?.isSuccess == true -> {
-                snackBarMessage = "Friend request accepted!"
-                showSnackBar = true
-                userFriendsViewModel.resetState(UserFriendsStateType.ACCEPT_REQUEST)
-            }
-            acceptFriendRequestState?.isFailure == true -> {
-                snackBarMessage = "Failed to accept friend request: ${acceptFriendRequestState.exceptionOrNull()?.message}"
-                showSnackBar = true
-                userFriendsViewModel.resetState(UserFriendsStateType.ACCEPT_REQUEST)
-            }
-            else -> Unit
-        }
-    }
-
-    LaunchedEffect(rejectFriendRequestState) {
-        when {
-            rejectFriendRequestState?.isSuccess == true -> {
-                snackBarMessage = "Friend request rejected!"
-                showSnackBar = true
-                userFriendsViewModel.resetState(UserFriendsStateType.REJECT_REQUEST)
-            }
-            rejectFriendRequestState?.isFailure == true -> {
-                snackBarMessage = "Failed to reject friend request: ${rejectFriendRequestState.exceptionOrNull()?.message}"
-                showSnackBar = true
-                userFriendsViewModel.resetState(UserFriendsStateType.REJECT_REQUEST)
-            }
-            else -> Unit
-        }
-    }
-
-    if (showSnackBar) {
-        LaunchedEffect(showSnackBar) {
-            delay(3000)
-            showSnackBar = false
-        }
-        Snackbar(
-            modifier = Modifier.padding(16.dp),
-            action = {
-                IconButton(
-                    onClick = { showSnackBar = false }
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+    val events = userFriendsViewModel.events.collectAsState(initial = null)
+    LaunchedEffect(events.value) {
+        events.value?.let { event ->
+            when (event) {
+                is UserFriendsEvent.Error -> {
+                    snackbarHostState.showSnackbar(event.message)
                 }
+                else -> Unit
             }
-        ) {
-            Text(text = snackBarMessage, color = Color.White)
         }
     }
 
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    navController.navigate(Screen.AddFriend.route)
-                },
-                containerColor = mainAppColor
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Friend",
-                    tint = Color.Black
-                )
+    var hasLoadedInitialData by remember { mutableStateOf(false) }
+    LaunchedEffect(currentUserId) {
+        if (currentUserId != null && !hasLoadedInitialData) {
+            userFriendsViewModel.loadInitialData(currentUserId)
+            hasLoadedInitialData = true
+        }
+    }
+
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntry?.savedStateHandle?.get<Boolean>("refreshFriends")?.let {
+            if (it && currentUserId != null) {
+                userFriendsViewModel.getFriends(currentUserId)
+                userFriendsViewModel.getPendingFriendRequests(currentUserId)
+                navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("refreshFriends")
             }
-        },
-        containerColor = backgroundColor
-    ) { paddingValues ->
+        }
+    }
+
+    if (!hasUserId) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .clickable { focusManager.clearFocus() },
+                .background(backgroundColor),
+            contentAlignment = Alignment.Center
         ) {
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+            CircularProgressIndicator(color = mainAppColor)
+        }
+        return
+    }
+
+    if (isLoading && friendsState == null && pendingRequestsState == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = mainAppColor)
+            }
+        return
+    }
+
+    AppDrawer(
+        onProfileClicked = { navController.navigate(Screen.Profile.route) },
+        onLogoutClicked = {
+            authViewModel.logout()
+            navController.navigate(Screen.Login.route) {
+                popUpTo("login") { inclusive = true }
+            }
+        },
+        drawerState = drawerState,
+        isLoggingOut = authViewModel.uiState.collectAsState().value.isLoggingOut
+    ) {
+        Scaffold(
+            bottomBar = { BottomNavigationBar(navController) },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { navController.navigate(Screen.AddFriend.route) },
+                    containerColor = mainAppColor
                 ) {
-                    CircularProgressIndicator(color = mainAppColor)
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Friend",
+                        tint = Color.Black
+                    )
                 }
-            } else {
+            },
+            containerColor = backgroundColor
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(backgroundColor)
+            ) {
+                TopBar(
+                    navController = navController,
+                    onMenuClicked = {
+                        coroutineScope.launch {
+                            drawerState.open()
+                        }
+                    },
+                    showBackArrow = false,
+                    onBackPressed = { navController.popBackStack() },
+                    modifier = Modifier.padding(top = 24.dp)
+                )
+
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
-                    TopBar(
-                        navController = navController,
-                        onProfileClicked = { /* Handle profile click */ },
-                        onLogoutClicked = {
-                            navController.navigate("login") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        },
-                        showBackArrow = true,
-                        onBackPressed = { navController.popBackStack() }
+                    Text(
+                        text = "Pending Friend Requests",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
                     )
 
-                    Column(
-                        modifier = Modifier
-                            .verticalScroll(rememberScrollState())
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Pending Friend Requests",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(16.dp)
-                        )
-
-                        if (pendingFriendRequestsState?.isSuccess == true) {
+                    when {
+                        uiState.isLoadingPendingRequests -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = mainAppColor)
+                            }
+                        }
+                        pendingRequestsState == null -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Pull to refresh",
+                                    color = Color.White
+                                )
+                            }
+                        }
+                        pendingRequestsState.isSuccess -> {
+                            val pendingRequests = pendingRequestsState.getOrNull() ?: emptyList()
                             if (pendingRequests.isNotEmpty()) {
-                                Box(
+                                LazyColumn(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .heightIn(max = 200.dp)
                                 ) {
-                                    LazyColumn(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                    ) {
-                                        items(pendingRequests) { user ->
-                                            PendingFriendRequestCard(
-                                                user = user,
-                                                currentUserId = nonNullCurrentUserId ?: "",
-                                                userFriendsViewModel = userFriendsViewModel,
-                                                modifier = Modifier.padding(8.dp)
-                                            )
-                                        }
+                                    items(pendingRequests) { user ->
+                                        PendingFriendRequestCard(
+                                            user = user,
+                                            currentUserId = currentUserId,
+                                            userFriendsViewModel = userFriendsViewModel,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
                                     }
                                 }
                             } else {
@@ -235,53 +230,73 @@ fun FriendsScreen(
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
-                        } else if (pendingFriendRequestsState?.isFailure == true) {
+                        }
+                        pendingRequestsState.isFailure -> {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = "Error: ${pendingFriendRequestsState.exceptionOrNull()?.message}",
+                                        text = "Failed to load pending requests",
                                         color = Color.Red
                                     )
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Button(
-                                        onClick = {
-                                            nonNullCurrentUserId?.let { userId ->
-                                                userFriendsViewModel.getPendingFriendRequests(userId)
-                                            }
-                                        },
+                                        onClick = { currentUserId.let { userFriendsViewModel.getPendingFriendRequests(it) } },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = mainAppColor
                                         )
                                     ) {
-                                        Text("Retry")
+                                        Text("Retry", color = Color.Black)
                                     }
                                 }
                             }
                         }
+                    }
 
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
-                            thickness = 2.dp,
-                            color = Color.Gray.copy(alpha = 0.7f)
-                        )
+                    Divider(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        thickness = 1.dp,
+                        color = Color.Gray.copy(alpha = 0.5f)
+                    )
 
-                        Text(
-                            text = "Friend List",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                    Text(
+                        text = "Friend List",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
 
-                        when {
-                            friendsState?.isSuccess == true && friendsList.isNotEmpty() -> {
+                    when {
+                        uiState.isLoadingFriends -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = mainAppColor)
+                            }
+                        }
+                        friendsState == null -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Pull to refresh",
+                                    color = Color.White
+                                )
+                            }
+                        }
+                        friendsState.isSuccess -> {
+                            val friendsList = friendsState.getOrNull() ?: emptyList()
+                            if (friendsList.isNotEmpty()) {
                                 LazyColumn(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -290,21 +305,18 @@ fun FriendsScreen(
                                     items(friendsList) { friend ->
                                         FriendCard(
                                             friend = friend,
-                                            onClick = {
-                                                navController.navigate("friendDetail/${friend.friendId}") // Use friendId
-                                            },
+                                            onClick = { /* Handle click */ },
                                             modifier = Modifier.padding(8.dp),
-                                            currentUserId = nonNullCurrentUserId ?: "",
+                                            currentUserId = currentUserId,
                                             userFriendsViewModel = userFriendsViewModel
                                         )
                                     }
                                 }
-                            }
-                            friendsState?.isSuccess == true && friendsList.isEmpty() -> {
+                            } else {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 32.dp),
+                                        .weight(1f),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(
@@ -321,38 +333,32 @@ fun FriendsScreen(
                                                 containerColor = mainAppColor
                                             )
                                         ) {
-                                            Text("Add a Friend")
+                                            Text("Add a Friend", color = Color.Black)
                                         }
                                     }
                                 }
                             }
-                            friendsState?.isFailure == true -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "Error: ${friendsState.exceptionOrNull()?.message}",
-                                            color = Color.Red
+                        }
+                        friendsState.isFailure -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "Failed to load friends list",
+                                        color = Color.Red
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(
+                                        onClick = { currentUserId.let { userFriendsViewModel.getFriends(it) } },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = mainAppColor
                                         )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Button(
-                                            onClick = {
-                                                nonNullCurrentUserId?.let { userId ->
-                                                    userFriendsViewModel.getFriends(userId)
-                                                }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = mainAppColor
-                                            )
-                                        ) {
-                                            Text("Retry")
-                                        }
+                                    ) {
+                                        Text("Retry", color = Color.Black)
                                     }
                                 }
                             }

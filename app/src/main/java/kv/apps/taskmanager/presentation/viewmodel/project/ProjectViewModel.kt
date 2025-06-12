@@ -1,4 +1,4 @@
-package kv.apps.taskmanager.presentation.viewmodel
+package kv.apps.taskmanager.presentation.viewmodel.project
 
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
@@ -12,7 +12,6 @@ import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.usecase.projectsUseCases.ProjectUseCases
-import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -60,12 +59,6 @@ class ProjectViewModel @Inject constructor(
 
     private val _ownerDetails = MutableStateFlow<Pair<String, String>?>(null)
     val ownerDetails: StateFlow<Pair<String, String>?> = _ownerDetails.asStateFlow()
-
-    private val _memberDetails = MutableStateFlow<Pair<String, String>?>(null)
-    val memberDetails: StateFlow<Pair<String, String>?> = _memberDetails.asStateFlow()
-
-    private val _projectTeamMembers = MutableStateFlow<Map<String, List<String>>>(emptyMap())
-    val projectTeamMembers: StateFlow<Map<String, List<String>>> = _projectTeamMembers.asStateFlow()
 
     fun fetchTeamMembersForProject(projectId: String) {
         _teamMembersCache[projectId]?.let { cachedMembers ->
@@ -269,7 +262,6 @@ class ProjectViewModel @Inject constructor(
                     _creatorNamesCache[userId] = names
                 }
                 .onFailure { e ->
-                    // Silent failure as this might be called frequently
                 }
             _loading.value = false
         }
@@ -284,7 +276,6 @@ class ProjectViewModel @Inject constructor(
                     _projectTitlesCache[projectId] = project.title
                 }
                 .onFailure { e ->
-                    // Silent failure as this might be called frequently
                 }
             _loading.value = false
         }

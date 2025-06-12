@@ -1,9 +1,11 @@
 package kv.apps.taskmanager.presentation.screens.authScreens
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -33,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import kv.apps.taskmanager.R
+import kv.apps.taskmanager.presentation.navigation.Screen
+import kv.apps.taskmanager.presentation.viewmodel.auth.AuthErrorType
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel.AuthEvent
 import kv.apps.taskmanager.theme.backgroundColor
@@ -51,15 +58,20 @@ fun LoginScreen(
     navController: NavHostController,
     authViewModel: AuthViewModel,
     onLoginSuccess: () -> Unit = {
-        navController.navigate("project_list") {
+        navController.navigate(Screen.ProjectList.route) {
             popUpTo("login") { inclusive = true }
         }
     }
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val screenHeight = configuration.screenHeightDp.dp
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var keepLoggedIn by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
 
     val uiState by authViewModel.uiState.collectAsState()
     val isLoading = uiState.isLoading
@@ -69,145 +81,148 @@ fun LoginScreen(
             when (event) {
                 is AuthEvent.NavigateToHome -> onLoginSuccess()
                 is AuthEvent.Error -> {
+                    AuthErrorType.LoginError
                 }
                 else -> {}
             }
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
-            .padding(16.dp)
-            .clickable(onClick = { focusManager.clearFocus() }),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Image(
-            painter = painterResource(id = R.drawable.plantask_transparent),
-            contentDescription = "Task Management",
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentScale = ContentScale.Fit
-        )
-
-        Spacer(modifier = Modifier.height(50.dp))
-
-        Text(
-            text = "Login to",
-            color = Color.White,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "PlanTask",
-            color = mainAppColor,
-            fontSize = 38.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        TextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = textFieldColors()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation(),
-            colors = textFieldColors()
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .clickable(onClick = { focusManager.clearFocus() })
+                .padding(16.dp),
+            verticalArrangement = if (isLandscape) Arrangement.Center else Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Checkbox(
-                checked = keepLoggedIn,
-                onCheckedChange = { keepLoggedIn = it },
-                colors = CheckboxDefaults.colors(checkmarkColor = Color.Black)
-            )
-            Text("Keep me logged in", color = Color.White, fontSize = 16.sp)
-        }
+            if (!isLandscape) {
+                Spacer(modifier = Modifier.height(screenHeight * 0.05f))
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = {
-                authViewModel.login(email, password, keepLoggedIn)
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFACD3C)
-            ),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(50.dp)
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    color = Color.Black,
-                    modifier = Modifier.size(24.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.plantask_transparent),
+                    contentDescription = "Task Management",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight * 0.2f),
+                    contentScale = ContentScale.Fit
                 )
-            } else {
+            }
+
+            Spacer(modifier = Modifier.height(if (isLandscape) 16.dp else screenHeight * 0.05f))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = if (isLandscape) 32.dp else 0.dp)
+            ) {
                 Text(
-                    text = "Login",
-                    color = Color.Black,
-                    fontSize = 24.sp,
+                    text = "Login to",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "PlanTask",
+                    color = mainAppColor,
+                    fontSize = 38.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 32.dp else 40.dp))
 
-        TextButton(
-            onClick = { navController.navigate("forgot_password") }
-        ) {
-            Text(
-                text = "Forgot Password?",
-                color = mainAppColor,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
-
-        Row(
-            modifier = Modifier.padding(top = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Don't have an account?",
-                color = Color.White,
-                fontSize = 16.sp
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            TextButton(
-                onClick = { navController.navigate("register") }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = if (isLandscape) 64.dp else 0.dp)
             ) {
-                Text(
-                    text = "Register",
-                    color = mainAppColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                TextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors()
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = textFieldColors()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = keepLoggedIn,
+                        onCheckedChange = { keepLoggedIn = it },
+                        colors = CheckboxDefaults.colors(checkmarkColor = Color.Black)
+                    )
+                    Text("Keep me logged in",
+                        color = Color.White,
+                        fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = { authViewModel.login(email, password, keepLoggedIn) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFACD3C)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(if (isLandscape) 0.6f else 0.8f)
+                        .height(50.dp)
+                        .align(Alignment.CenterHorizontally)
+                ) {
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(backgroundColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = mainAppColor)
+                        }
+                    } else {
+                        Text("Login",
+                            color = Color.Black,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextButton(onClick = { navController.navigate(Screen.ForgotPassword.route) }) {
+                Text("Forgot Password?", color = mainAppColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+
+            Row(
+                modifier = Modifier.padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Don't have an account?", color = Color.White, fontSize = 16.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
+                    Text("Register", color = mainAppColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
             }
         }
     }

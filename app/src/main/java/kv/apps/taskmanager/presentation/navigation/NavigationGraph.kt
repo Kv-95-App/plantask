@@ -1,6 +1,7 @@
 package kv.apps.taskmanager.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -25,7 +26,7 @@ import kv.apps.taskmanager.presentation.screens.utilScreens.GetStartedScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.NotificationsScreen
 import kv.apps.taskmanager.presentation.screens.utilScreens.SplashScreen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
-import kv.apps.taskmanager.presentation.viewmodel.ProjectViewModel
+import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 
@@ -35,7 +36,8 @@ fun NavGraph(
     authViewModel: AuthViewModel = hiltViewModel(),
     taskViewModel: TaskViewModel = hiltViewModel(),
     userFriendsViewModel: UserFriendsViewModel = hiltViewModel(),
-    projectViewModel: ProjectViewModel = hiltViewModel()
+    projectViewModel: ProjectViewModel = hiltViewModel(),
+    modifier: Modifier
 ) {
     val isLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.userId != null
 
@@ -71,7 +73,6 @@ fun NavGraph(
             ProjectListScreen(
                 navController = navController,
                 projectViewModel = projectViewModel,
-                taskViewModel = taskViewModel,
                 authViewModel = authViewModel,
                 onAddProjectClicked = { navController.navigate(Screen.AddProject.route) },
             )
@@ -105,7 +106,8 @@ fun NavGraph(
                 projectId = projectId,
                 projectViewModel = projectViewModel,
                 taskViewModel = taskViewModel,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                userFriendsViewModel = userFriendsViewModel
             )
         }
 
@@ -125,9 +127,9 @@ fun NavGraph(
 
             ProjectMembers(
                 projectId = projectId,
-                onBackPressed = { navController.popBackStack() },
                 projectViewModel = projectViewModel,
-                navController = navController
+                navController = navController,
+                authViewModel = authViewModel
             )
         }
 
@@ -135,7 +137,6 @@ fun NavGraph(
             OngoingProjectsScreen(
                 navController = navController,
                 projectViewModel = projectViewModel,
-                taskViewModel = taskViewModel,
                 authViewModel = authViewModel,
                 onAddProjectClicked = { navController.navigate(Screen.AddProject.route) }
             )
@@ -145,7 +146,6 @@ fun NavGraph(
             CompletedProjectsScreen(
                 navController = navController,
                 projectViewModel = projectViewModel,
-                taskViewModel = taskViewModel,
                 authViewModel = authViewModel
             )
         }
@@ -186,7 +186,8 @@ fun NavGraph(
                 navController = navController,
                 projectId = backStackEntry.arguments?.getString("projectId") ?: "" ,
                 taskViewModel = taskViewModel,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                projectViewModel = projectViewModel
             )
         }
 
@@ -218,8 +219,7 @@ fun NavGraph(
 
         composable(route = Screen.GetStarted.route) {
             GetStartedScreen(
-                navController = navController,
-
+                navController = navController
                 )
         }
 

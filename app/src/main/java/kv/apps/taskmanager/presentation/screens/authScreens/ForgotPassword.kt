@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -112,7 +113,14 @@ fun ForgotPasswordScreen(
                 .height(50.dp)
         ) {
             if (isLoading) {
-                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(backgroundColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = mainAppColor)
+                }
             } else {
                 Text(
                     text = "Send Reset Email",

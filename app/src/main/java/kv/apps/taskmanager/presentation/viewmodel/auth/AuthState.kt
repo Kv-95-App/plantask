@@ -9,4 +9,3 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val isLoggingOut: Boolean = false
 )
-

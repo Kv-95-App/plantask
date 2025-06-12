@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,21 +14,23 @@ import kotlinx.coroutines.delay
 import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
+import kv.apps.taskmanager.theme.mainAppColor
 
 @Composable
 fun SplashScreen(
     navController: NavController,
-    authViewModel: AuthViewModel) {
-    val user = authViewModel.uiState.collectAsState().value.user
-    val isKeepLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.isKeepLoggedIn
-    val isLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.userId != null
+    authViewModel: AuthViewModel
+) {
+    val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
+    val user = uiState.value.user
+    val isKeepLoggedIn = uiState.value.isKeepLoggedIn
+    val isLoggedIn = uiState.value.userId != null
 
     LaunchedEffect(user, isKeepLoggedIn, isLoggedIn) {
         delay(500)
-        val startDestination = if (user != null || isKeepLoggedIn == true || isLoggedIn == true) {
-            Screen.ProjectList.route
-        } else {
-            Screen.Login.route
+        val startDestination = when {
+            user != null || isKeepLoggedIn == true || isLoggedIn == true -> Screen.ProjectList.route
+            else -> Screen.Login.route
         }
         navController.navigate(startDestination) {
             popUpTo(Screen.SplashScreen.route) { inclusive = true }
@@ -42,6 +43,6 @@ fun SplashScreen(
             .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = mainAppColor)
     }
 }

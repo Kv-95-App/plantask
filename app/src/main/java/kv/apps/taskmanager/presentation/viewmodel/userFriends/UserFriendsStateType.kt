@@ -4,5 +4,8 @@ enum class UserFriendsStateType {
     ADD_FRIEND,
     DELETE_FRIEND,
     ACCEPT_REQUEST,
-    REJECT_REQUEST
+    REJECT_REQUEST,
+    FRIENDS_LIST,
+    PENDING_REQUESTS,
+    ALL_STATES
 }

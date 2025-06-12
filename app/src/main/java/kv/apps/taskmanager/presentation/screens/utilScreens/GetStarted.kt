@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kv.apps.taskmanager.R
+import kv.apps.taskmanager.presentation.navigation.Screen
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
@@ -74,7 +75,7 @@ fun GetStartedScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(40.dp))
 
                 Button(
-                    onClick = { navController.navigate("login") },
+                    onClick = { navController.navigate(Screen.Login.route) },
                     colors = ButtonDefaults.buttonColors(containerColor = mainAppColor),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier

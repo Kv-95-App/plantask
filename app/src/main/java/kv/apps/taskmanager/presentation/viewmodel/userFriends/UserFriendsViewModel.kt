@@ -1,8 +1,12 @@
 package kv.apps.taskmanager.presentation.viewmodel.userFriends
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -11,7 +15,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kv.apps.taskmanager.domain.model.Friend
 import kv.apps.taskmanager.domain.model.User
 import kv.apps.taskmanager.domain.usecase.userUseCases.AcceptFriendRequestUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.AddFriendUseCase
@@ -37,6 +40,51 @@ class UserFriendsViewModel @Inject constructor(
     private val _events = MutableSharedFlow<UserFriendsEvent>()
     val events: SharedFlow<UserFriendsEvent> = _events.asSharedFlow()
 
+    private var isInitialLoad by mutableStateOf(true)
+
+    init {
+        viewModelScope.launch {
+            // Initial data loading will be triggered from the UI
+        }
+    }
+
+    fun loadInitialData(userId: String) {
+        if (isInitialLoad) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isLoading = true) }
+                try {
+                    val friendsDeferred = async { getFriendsUseCase(userId) }
+                    val pendingRequestsDeferred = async { getPendingFriendRequestsUseCase(userId) }
+
+                    val friendsResult = friendsDeferred.await()
+                    val pendingRequestsResult = pendingRequestsDeferred.await()
+
+                    _uiState.update {
+                        it.copy(
+                            friends = friendsResult.fold(
+                                onSuccess = { Result.success(it) },
+                                onFailure = { Result.failure(it) }
+                            ),
+                            pendingFriendRequests = pendingRequestsResult.fold(
+                                onSuccess = { Result.success(it) },
+                                onFailure = { Result.failure(it) }
+                            ),
+                            isLoading = false
+                        )
+                    }
+                    isInitialLoad = false
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            error = "Failed to load initial data: ${e.message}",
+                            isLoading = false
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     fun addFriend(currentUserId: String, friendEmail: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -47,7 +95,8 @@ class UserFriendsViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     addFriendState = Result.success(message),
-                                    error = null
+                                    error = null,
+                                    isLoading = false
                                 )
                             }
                             getFriends(currentUserId)
@@ -73,7 +122,8 @@ class UserFriendsViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     deleteFriendState = Result.success(Unit),
-                                    error = null
+                                    error = null,
+                                    isLoading = false
                                 )
                             }
                             getFriends(currentUserId)
@@ -99,19 +149,58 @@ class UserFriendsViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     friends = Result.success(friends),
-                                    error = null,
                                     isLoadingFriends = false
                                 )
                             }
                         },
                         onFailure = { e ->
-                            emitError(UserFriendsErrorType.FetchFriendsError, "Failed to load friends: ${e.message}")
-                            _uiState.update { it.copy(isLoadingFriends = false) }
+                            _uiState.update {
+                                it.copy(
+                                    friends = Result.failure(e),
+                                    isLoadingFriends = false
+                                )
+                            }
                         }
                     )
             } catch (e: Exception) {
-                emitError(UserFriendsErrorType.FetchFriendsError, "Unexpected error: ${e.message}")
-                _uiState.update { it.copy(isLoadingFriends = false) }
+                _uiState.update {
+                    it.copy(
+                        friends = Result.failure(e),
+                        isLoadingFriends = false
+                    )
+                }
+            }
+        }
+    }
+
+    fun getPendingFriendRequests(userId: String) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoadingPendingRequests = true,
+                    pendingFriendRequests = null
+                )
+            }
+            try {
+                getPendingFriendRequestsUseCase(userId)
+                    .fold(
+                        onSuccess = { pendingRequests ->
+                            _uiState.update {
+                                it.copy(
+                                    pendingFriendRequests = Result.success(pendingRequests),
+                                    error = null,
+                                    isLoadingPendingRequests = false
+                                )
+                            }
+                        },
+                        onFailure = { e ->
+                            emitError(UserFriendsErrorType.FetchPendingRequestsError, "Failed to load pending requests: ${e.message}")
+                            _uiState.update { it.copy(isLoadingPendingRequests = false) }
+                        }
+                    )
+            } catch (e: Exception) {
+                emitError(UserFriendsErrorType.FetchPendingRequestsError, "Unexpected error: ${e.message}")
+                _uiState.update { it.copy(isLoadingPendingRequests = false) }
             }
         }
     }
@@ -126,7 +215,8 @@ class UserFriendsViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     acceptFriendRequestState = Result.success(Unit),
-                                    error = null
+                                    error = null,
+                                    isLoading = false
                                 )
                             }
                             getPendingFriendRequests(currentUserId)
@@ -153,7 +243,8 @@ class UserFriendsViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     rejectFriendRequestState = Result.success(Unit),
-                                    error = null
+                                    error = null,
+                                    isLoading = false
                                 )
                             }
                             getPendingFriendRequests(currentUserId)
@@ -169,40 +260,40 @@ class UserFriendsViewModel @Inject constructor(
         }
     }
 
-    fun getPendingFriendRequests(userId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingPendingRequests = true) }
-            try {
-                getPendingFriendRequestsUseCase(userId)
-                    .fold(
-                        onSuccess = { pendingRequests ->
-                            _uiState.update {
-                                it.copy(
-                                    pendingFriendRequests = Result.success(pendingRequests),
-                                    error = null,
-                                    isLoadingPendingRequests = false
-                                )
-                            }
-                        },
-                        onFailure = { e ->
-                            emitError(UserFriendsErrorType.FetchPendingRequestsError, "Failed to load pending requests: ${e.message}")
-                            _uiState.update { it.copy(isLoadingPendingRequests = false) }
-                        }
-                    )
-            } catch (e: Exception) {
-                emitError(UserFriendsErrorType.FetchPendingRequestsError, "Unexpected error: ${e.message}")
-                _uiState.update { it.copy(isLoadingPendingRequests = false) }
-            }
-        }
-    }
-
     fun resetState(stateType: UserFriendsStateType) {
         _uiState.update { currentState ->
             when (stateType) {
-                UserFriendsStateType.ADD_FRIEND -> currentState.copy(addFriendState = null)
-                UserFriendsStateType.DELETE_FRIEND -> currentState.copy(deleteFriendState = null)
-                UserFriendsStateType.ACCEPT_REQUEST -> currentState.copy(acceptFriendRequestState = null)
-                UserFriendsStateType.REJECT_REQUEST -> currentState.copy(rejectFriendRequestState = null)
+                UserFriendsStateType.ADD_FRIEND -> currentState.copy(
+                    addFriendState = null,
+                    isLoading = false,
+                    error = null
+                )
+                UserFriendsStateType.DELETE_FRIEND -> currentState.copy(
+                    deleteFriendState = null,
+                    isLoading = false,
+                    error = null
+                )
+                UserFriendsStateType.ACCEPT_REQUEST -> currentState.copy(
+                    acceptFriendRequestState = null,
+                    isLoading = false,
+                    error = null
+                )
+                UserFriendsStateType.REJECT_REQUEST -> currentState.copy(
+                    rejectFriendRequestState = null,
+                    isLoading = false,
+                    error = null
+                )
+                UserFriendsStateType.FRIENDS_LIST -> currentState.copy(
+                    friends = null,
+                    isLoadingFriends = false,
+                    error = null
+                )
+                UserFriendsStateType.PENDING_REQUESTS -> currentState.copy(
+                    pendingFriendRequests = null,
+                    isLoadingPendingRequests = false,
+                    error = null
+                )
+                UserFriendsStateType.ALL_STATES -> UserFriendsUiState()
             }
         }
     }
@@ -210,5 +301,13 @@ class UserFriendsViewModel @Inject constructor(
     private suspend fun emitError(type: UserFriendsErrorType, message: String) {
         _events.emit(UserFriendsEvent.Error(type, message))
         _uiState.update { it.copy(error = message) }
+        when (type) {
+            UserFriendsErrorType.AddFriendError -> resetState(UserFriendsStateType.ADD_FRIEND)
+            UserFriendsErrorType.DeleteFriendError -> resetState(UserFriendsStateType.DELETE_FRIEND)
+            UserFriendsErrorType.AcceptRequestError -> resetState(UserFriendsStateType.ACCEPT_REQUEST)
+            UserFriendsErrorType.RejectRequestError -> resetState(UserFriendsStateType.REJECT_REQUEST)
+            UserFriendsErrorType.FetchFriendsError -> resetState(UserFriendsStateType.FRIENDS_LIST)
+            UserFriendsErrorType.FetchPendingRequestsError -> resetState(UserFriendsStateType.PENDING_REQUESTS)
+        }
     }
 }

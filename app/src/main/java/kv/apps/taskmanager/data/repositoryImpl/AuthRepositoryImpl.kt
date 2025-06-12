@@ -7,21 +7,20 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.snapshots
-import kotlinx.coroutines.tasks.await
-import kv.apps.taskmanager.data.remote.AuthRemoteDataSource
-import kv.apps.taskmanager.domain.model.User
-import kv.apps.taskmanager.domain.repository.AuthRepository
-import javax.inject.Inject
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kv.apps.taskmanager.data.remote.AuthRemoteDataSource
+import kv.apps.taskmanager.domain.model.User
+import kv.apps.taskmanager.domain.repository.AuthRepository
+import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,

@@ -5,22 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,27 +28,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.R
 import kv.apps.taskmanager.theme.backgroundColor
+import kv.apps.taskmanager.theme.mainAppColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopBar(
     navController: NavController,
-    onProfileClicked: () -> Unit,
-    onLogoutClicked: () -> Unit,
+    onMenuClicked: () -> Unit,
     showBackArrow: Boolean = false,
     onBackPressed: (() -> Unit)? = null,
-    isLoggingOut: Boolean = false
+    isLoggingOut: Boolean = false,
+    modifier: Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
     var isBackButtonEnabled by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,33 +59,33 @@ fun TopBar(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = if (showBackArrow) 0.dp else 16.dp),
+                .padding(start = 16.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            if (showBackArrow) {
-                IconButton(
-                    onClick = {
-                        if (isBackButtonEnabled) {
-                            isBackButtonEnabled = false
-                            onBackPressed?.invoke() ?: navController.popBackStack()
-
-                            coroutineScope.launch {
-                                delay(1000)
-                                isBackButtonEnabled = true
-                            }
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
+            IconButton(
+                onClick = onMenuClicked,
+                modifier = Modifier.size(48.dp),
+                enabled = !isLoggingOut
+            ) {
+                if (isLoggingOut) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(backgroundColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = mainAppColor)
+                    }
+                } else {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "",
-                        tint = Color.White
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Profile",
+                        tint = Color.White,
+                        modifier = Modifier.size(42.dp)
                     )
                 }
             }
         }
-        Spacer (modifier = Modifier.height(8.dp))
 
         Box(
             modifier = Modifier.weight(2f),
@@ -111,63 +107,26 @@ fun TopBar(
                 .padding(end = 16.dp),
             contentAlignment = Alignment.CenterEnd
         ) {
-            IconButton(
-                onClick = { expanded = true },
-                modifier = Modifier.size(48.dp),
-                enabled = !isLoggingOut
-            ) {
-                if (isLoggingOut) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
+            if (showBackArrow) {
+                IconButton(
+                    onClick = {
+                        if (isBackButtonEnabled) {
+                            isBackButtonEnabled = false
+                            onBackPressed?.invoke() ?: navController.popBackStack()
+                            coroutineScope.launch {
+                                delay(1000)
+                                isBackButtonEnabled = true
+                            }
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Profile",
-                        tint = Color.White,
-                        modifier = Modifier.size(42.dp)
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
                     )
                 }
-            }
-
-            DropdownMenu(
-                expanded = expanded && !isLoggingOut,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.background(Color.White),
-                offset = DpOffset(8.dp, 0.dp)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Profile") },
-                    onClick = {
-                        expanded = false
-                        onProfileClicked()
-                    },
-                    enabled = !isLoggingOut
-                )
-                DropdownMenuItem(
-                    text = {
-                        if (isLoggingOut) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Logging out...")
-                            }
-                        } else {
-                            Text("Logout")
-                        }
-                    },
-                    onClick = {
-                        if (!isLoggingOut) {
-                            expanded = false
-                            onLogoutClicked()
-                        }
-                    }
-                )
             }
         }
     }

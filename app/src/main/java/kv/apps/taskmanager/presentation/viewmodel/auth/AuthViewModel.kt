@@ -6,6 +6,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -46,10 +48,19 @@ class AuthViewModel @Inject constructor(
     private val _events = MutableSharedFlow<AuthEvent>()
     val events: SharedFlow<AuthEvent> = _events.asSharedFlow()
 
+    private var sessionTimer: Job? = null
+    private val SESSION_TIMEOUT = 30 * 60 * 1000L
+
     private val lifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStart(owner: LifecycleOwner) {
+            if (!uiState.value.isKeepLoggedIn) {
+                resetSessionTimer()
+            }
+        }
+
         override fun onStop(owner: LifecycleOwner) {
             if (!uiState.value.isKeepLoggedIn) {
-                logout()
+                startSessionTimer()
             }
         }
     }
@@ -66,6 +77,22 @@ class AuthViewModel @Inject constructor(
 
     fun unregisterLifecycle(lifecycle: Lifecycle) {
         lifecycle.removeObserver(lifecycleObserver)
+    }
+
+    private fun startSessionTimer() {
+        sessionTimer?.cancel()
+        sessionTimer = viewModelScope.launch {
+            delay(SESSION_TIMEOUT)
+            if (!uiState.value.isKeepLoggedIn) {
+                logout()
+            }
+        }
+    }
+
+    private fun resetSessionTimer() {
+        if (!uiState.value.isKeepLoggedIn) {
+            startSessionTimer()
+        }
     }
 
     private fun loadCurrentUser() {
@@ -117,11 +144,17 @@ class AuthViewModel @Inject constructor(
                             it.copy(
                                 user = user,
                                 userId = user.uid,
-                                isLoading = false
+                                isLoading = false,
+                                isKeepLoggedIn = keepLoggedIn
                             )
                         }
                         sessionUseCase.saveUserSession(user.uid)
-                        if (keepLoggedIn) sessionUseCase.saveKeepLoggedIn(true)
+                        if (keepLoggedIn) {
+                            sessionUseCase.saveKeepLoggedIn(true)
+                            sessionTimer?.cancel()
+                        } else {
+                            startSessionTimer()
+                        }
                         _events.emit(AuthEvent.NavigateToHome)
                     },
                     onFailure = { error ->
@@ -140,11 +173,13 @@ class AuthViewModel @Inject constructor(
             try {
                 logoutUseCase()
                 userPreferencesRepository.clearUserSession()
+                sessionTimer?.cancel()
                 _uiState.update {
                     it.copy(
                         user = null,
                         userId = null,
-                        isLoggingOut = false
+                        isLoggingOut = false,
+                        isKeepLoggedIn = false
                     )
                 }
                 _events.emit(AuthEvent.NavigateToLogin)

@@ -33,12 +33,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kv.apps.taskmanager.R
 import kv.apps.taskmanager.domain.model.Project
+import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
 @Composable
 fun CompletedProjectCard(
     project: Project,
     onDeleteClicked: (Project) -> Unit,
+    showDelete: Boolean,
     modifier: Modifier = Modifier
 ) {
     val showDeleteDialog = remember { mutableStateOf(false) }
@@ -50,7 +52,7 @@ fun CompletedProjectCard(
     Card(
         modifier = modifier
             .padding(8.dp)
-            .clickable(onClick = {  }),
+            .clickable(onClick = {}),
         colors = CardDefaults.cardColors(containerColor = mainAppColor)
     ) {
         Column(
@@ -73,17 +75,19 @@ fun CompletedProjectCard(
                         .padding(end = 32.dp)
                 )
 
-                IconButton(
-                    onClick = { showDeleteDialog.value = true },
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.TopEnd)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.Black
-                    )
+                if (showDelete) {
+                    IconButton(
+                        onClick = { showDeleteDialog.value = true },
+                        modifier = Modifier
+                            .size(24.dp)
+                            .align(Alignment.TopEnd)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.Black
+                        )
+                    }
                 }
             }
 
@@ -98,7 +102,7 @@ fun CompletedProjectCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             LinearProgressIndicator(
-                progress = 1f,
+                progress = { 1f },
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black,
                 trackColor = Color.Gray
@@ -109,21 +113,29 @@ fun CompletedProjectCard(
     if (showDeleteDialog.value) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog.value = false },
-            title = { Text(text = "Delete Project") },
-            text = { Text(text = "Are you sure you want to delete this project?") },
+            title = {
+                Text(text = "Delete Project", color = mainAppColor)
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this project?",
+                    color = mainAppColor
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteClicked(project)
                     showDeleteDialog.value = false
                 }) {
-                    Text("Yes")
+                    Text("Yes", color = mainAppColor)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog.value = false }) {
-                    Text("No")
+                    Text("No", color = mainAppColor)
                 }
-            }
+            },
+            containerColor = backgroundColor
         )
     }
 }

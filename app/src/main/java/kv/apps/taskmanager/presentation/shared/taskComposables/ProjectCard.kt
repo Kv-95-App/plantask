@@ -41,30 +41,31 @@ import androidx.navigation.NavController
 import kv.apps.taskmanager.R
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.presentation.navigation.Screen
+import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.theme.onGoingCardColor
-
 
 @Composable
 fun ProjectCard(
     project: Project,
     onDeleteClicked: () -> Unit,
     onMarkComplete: () -> Unit,
-    navController: NavController
+    navController: NavController,
+    showActions: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val showDeleteDialog = remember { mutableStateOf(false) }
     val showCompleteDialog = remember { mutableStateOf(false) }
     val customFont = FontFamily(
-        Font(R.font.pilat )
+        Font(R.font.pilat)
     )
+
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(8.dp)
             .clickable {
-                if (true) {
-                    navController.navigate(Screen.ProjectDetail.createRoute(project.id))
-                }
+                navController.navigate(Screen.ProjectDetail.createRoute(project.id))
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = onGoingCardColor),
@@ -136,25 +137,27 @@ fun ProjectCard(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { showDeleteDialog.value = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = mainAppColor
-                        )
-                    }
-                    IconButton(onClick = { showCompleteDialog.value = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Mark as Complete",
-                            tint = Color.Green
-                        )
+                if (showActions) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { showDeleteDialog.value = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = mainAppColor
+                            )
+                        }
+                        IconButton(onClick = { showCompleteDialog.value = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Mark as Complete",
+                                tint = Color.Green
+                            )
+                        }
                     }
                 }
             }
@@ -164,42 +167,44 @@ fun ProjectCard(
     if (showDeleteDialog.value) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog.value = false },
-            title = { Text(text = "Delete Project") },
-            text = { Text(text = "Are you sure you want to delete this project?") },
+            title = { Text(text = "Delete Project", color = mainAppColor) },
+            text = { Text(text = "Are you sure you want to delete this project?", color = mainAppColor) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteClicked()
                     showDeleteDialog.value = false
                 }) {
-                    Text("Yes")
+                    Text("Yes", color = mainAppColor)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog.value = false }) {
-                    Text("No")
+                    Text("No", color = mainAppColor)
                 }
-            }
+            },
+            containerColor = backgroundColor
         )
     }
 
     if (showCompleteDialog.value) {
         AlertDialog(
             onDismissRequest = { showCompleteDialog.value = false },
-            title = { Text(text = "Mark Project as Complete") },
-            text = { Text(text = "Are you sure you want to mark this project as complete?") },
+            title = { Text(text = "Mark Project as Complete", color = mainAppColor) },
+            text = { Text(text = "Are you sure you want to mark this project as complete?", color = mainAppColor) },
             confirmButton = {
                 TextButton(onClick = {
                     onMarkComplete()
                     showCompleteDialog.value = false
                 }) {
-                    Text("Yes")
+                    Text("Yes", color = mainAppColor)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCompleteDialog.value = false }) {
-                    Text("No")
+                    Text("No", color = mainAppColor)
                 }
-            }
+            },
+            containerColor = backgroundColor
         )
     }
 }

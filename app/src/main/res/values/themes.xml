@@ -1,5 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.TaskManager" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="CustomDatePickerTheme" parent="Theme.Material3.DayNight.Dialog">
+        <item name="colorPrimary">@color/main_app_color</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="android:windowBackground">@color/background_color</item>
+        <item name="android:textColorPrimary">@color/white</item>
+    </style>
+    <style name="Theme.TaskManager" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- System bar colors -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- Cutout handling -->
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
+
+        <!-- Background colors -->
+        <item name="android:windowBackground">@color/background_color</item>
+        <item name="colorSurface">@color/background_color</item>
+
+        <!-- Edge-to-edge configuration -->
+        <item name="android:fitsSystemWindows">false</item>
+
+        <!-- Status bar icons color -->
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+    </style>
 </resources>
