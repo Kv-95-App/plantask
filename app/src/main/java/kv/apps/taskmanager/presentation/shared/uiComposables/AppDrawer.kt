@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.theme.backgroundColor
-import kv.apps.taskmanager.theme.onGoingCardColor
 
 @Composable
 fun AppDrawer(
