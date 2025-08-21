@@ -22,6 +22,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     companion object {
         private val USER_ID_KEY = stringPreferencesKey("user_id")
         private val KEEP_LOGGED_IN_KEY = booleanPreferencesKey("keep_logged_in")
+        private val SESSION_EXPIRATION_KEY = stringPreferencesKey("session_expiration")
     }
 
     override suspend fun saveUserSession(userId: String) {
@@ -54,9 +55,10 @@ class UserPreferencesRepositoryImpl @Inject constructor(
                 dataStore.edit { preferences ->
                     preferences.remove(USER_ID_KEY)
                     preferences.remove(KEEP_LOGGED_IN_KEY)
+                    preferences.remove(SESSION_EXPIRATION_KEY)
                 }
             } catch (e: IOException) {
-                e.printStackTrace()
+                throw e
             }
         }
     }

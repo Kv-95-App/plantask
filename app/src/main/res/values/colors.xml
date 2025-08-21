@@ -7,8 +7,8 @@
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
 
-    <color name="main_app_color">#FFFACD3C</color>  <!-- Your yellow -->
-    <color name="background_color">#FF1E222A</color>  <!-- Dark gray -->
+    <color name="main_app_color">#FFFACD3C</color>
+    <color name="background_color">#FF1E222A</color>
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
     <color name ="light_gray">#2C2F38</color>

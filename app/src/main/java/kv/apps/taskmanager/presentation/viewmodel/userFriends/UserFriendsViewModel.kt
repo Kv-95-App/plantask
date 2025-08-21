@@ -1,8 +1,5 @@
 package kv.apps.taskmanager.presentation.viewmodel.userFriends
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,12 +12,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kv.apps.taskmanager.domain.model.User
+import kv.apps.taskmanager.domain.model.FriendRequest
+import kv.apps.taskmanager.domain.model.FriendRequestStatus
 import kv.apps.taskmanager.domain.usecase.userUseCases.AcceptFriendRequestUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.AddFriendUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.DeleteFriendUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.GetFriendsUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.GetPendingFriendRequestsUseCase
+import kv.apps.taskmanager.domain.usecase.userUseCases.GetUserByEmailUseCase
+import kv.apps.taskmanager.domain.usecase.userUseCases.GetUserByIdUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.RejectFriendRequestUseCase
 import javax.inject.Inject
 
@@ -31,7 +31,9 @@ class UserFriendsViewModel @Inject constructor(
     private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
     private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
     private val getPendingFriendRequestsUseCase: GetPendingFriendRequestsUseCase,
-    private val deleteFriendUseCase: DeleteFriendUseCase
+    private val deleteFriendUseCase: DeleteFriendUseCase,
+    private val getUserById: GetUserByIdUseCase,
+    private val getUserByEmailUseCase: GetUserByEmailUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserFriendsUiState())
@@ -40,46 +42,35 @@ class UserFriendsViewModel @Inject constructor(
     private val _events = MutableSharedFlow<UserFriendsEvent>()
     val events: SharedFlow<UserFriendsEvent> = _events.asSharedFlow()
 
-    private var isInitialLoad by mutableStateOf(true)
-
-    init {
-        viewModelScope.launch {
-            // Initial data loading will be triggered from the UI
-        }
-    }
-
     fun loadInitialData(userId: String) {
-        if (isInitialLoad) {
-            viewModelScope.launch {
-                _uiState.update { it.copy(isLoading = true) }
-                try {
-                    val friendsDeferred = async { getFriendsUseCase(userId) }
-                    val pendingRequestsDeferred = async { getPendingFriendRequestsUseCase(userId) }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val friendsDeferred = async { getFriendsUseCase(userId) }
+                val pendingRequestsDeferred = async { getPendingFriendRequestsUseCase(userId) }
 
-                    val friendsResult = friendsDeferred.await()
-                    val pendingRequestsResult = pendingRequestsDeferred.await()
+                val friendsResult = friendsDeferred.await()
+                val pendingRequestsResult = pendingRequestsDeferred.await()
 
-                    _uiState.update {
-                        it.copy(
-                            friends = friendsResult.fold(
-                                onSuccess = { Result.success(it) },
-                                onFailure = { Result.failure(it) }
-                            ),
-                            pendingFriendRequests = pendingRequestsResult.fold(
-                                onSuccess = { Result.success(it) },
-                                onFailure = { Result.failure(it) }
-                            ),
-                            isLoading = false
-                        )
-                    }
-                    isInitialLoad = false
-                } catch (e: Exception) {
-                    _uiState.update {
-                        it.copy(
-                            error = "Failed to load initial data: ${e.message}",
-                            isLoading = false
-                        )
-                    }
+                _uiState.update { it ->
+                    it.copy(
+                        friends = friendsResult.fold(
+                            onSuccess = { Result.success(it) },
+                            onFailure = { Result.failure(it) }
+                        ),
+                        pendingFriendRequests = pendingRequestsResult.fold(
+                            onSuccess = { Result.success(it) },
+                            onFailure = { Result.failure(it) }
+                        ),
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        error = "Failed to load initial data: ${e.message}",
+                        isLoading = false
+                    )
                 }
             }
         }
@@ -91,16 +82,35 @@ class UserFriendsViewModel @Inject constructor(
             try {
                 addFriendUseCase(currentUserId, friendEmail)
                     .fold(
-                        onSuccess = { message ->
+                        onSuccess = { requestId ->
+                            val friendUser = getUserByEmailUseCase(friendEmail).getOrNull()
+
+                            if (friendUser != null) {
+                                val currentUser = getUserById(currentUserId).getOrNull()
+                                val senderName = currentUser?.let {
+                                    "${it.firstName} ${it.lastName}".takeIf { it.isNotBlank() } ?: it.email
+                                } ?: "Someone"
+
+                                val friendRequest = FriendRequest(
+                                    requestId = requestId,
+                                    fromUserId = currentUserId,
+                                    toUserId = friendUser.uid,
+                                    status = FriendRequestStatus.PENDING,
+                                    timestamp = com.google.firebase.Timestamp.now()
+                                )
+
+
+                            }
+
                             _uiState.update {
                                 it.copy(
-                                    addFriendState = Result.success(message),
+                                    addFriendState = Result.success("Friend request sent"),
                                     error = null,
                                     isLoading = false
                                 )
                             }
                             getFriends(currentUserId)
-                            _events.emit(UserFriendsEvent.FriendAdded(message))
+                            _events.emit(UserFriendsEvent.FriendAdded(friendEmail))
                         },
                         onFailure = { e ->
                             emitError(UserFriendsErrorType.AddFriendError, "Failed to add friend: ${e.message}")
@@ -297,6 +307,47 @@ class UserFriendsViewModel @Inject constructor(
             }
         }
     }
+    fun fetchTargetUser(userId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingTargetUser = true) }
+            try {
+                getUserById(userId)
+                    .fold(
+                        onSuccess = { user ->
+                            _uiState.update {
+                                it.copy(
+                                    targetUser = user,
+                                    isLoadingTargetUser = false
+                                )
+                            }
+                        },
+                        onFailure = { e ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoadingTargetUser = false,
+                                    error = "Failed to load user: ${e.message}"
+                                )
+                            }
+                            _events.emit(UserFriendsEvent.Error(
+                                UserFriendsErrorType.FETCH_USER_ERROR,
+                                "Failed to load user profile"
+                            ))
+                        }
+                    )
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoadingTargetUser = false,
+                        error = "Unexpected error: ${e.message}"
+                    )
+                }
+                _events.emit(UserFriendsEvent.Error(
+                    UserFriendsErrorType.FETCH_USER_ERROR,
+                    "Unexpected error loading user"
+                ))
+            }
+        }
+    }
 
     private suspend fun emitError(type: UserFriendsErrorType, message: String) {
         _events.emit(UserFriendsEvent.Error(type, message))
@@ -308,6 +359,7 @@ class UserFriendsViewModel @Inject constructor(
             UserFriendsErrorType.RejectRequestError -> resetState(UserFriendsStateType.REJECT_REQUEST)
             UserFriendsErrorType.FetchFriendsError -> resetState(UserFriendsStateType.FRIENDS_LIST)
             UserFriendsErrorType.FetchPendingRequestsError -> resetState(UserFriendsStateType.PENDING_REQUESTS)
+            UserFriendsErrorType.FETCH_USER_ERROR -> resetState(UserFriendsStateType.ALL_STATES)
         }
     }
 }

@@ -1,11 +1,14 @@
 package kv.apps.taskmanager.data.repositoryImpl
 
-import com.google.firebase.Timestamp
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.functions
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kv.apps.taskmanager.data.remote.FirestoreListenerManager
 import kv.apps.taskmanager.domain.model.Friend
 import kv.apps.taskmanager.domain.model.FriendRequest
 import kv.apps.taskmanager.domain.model.FriendRequestStatus
@@ -15,7 +18,8 @@ import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val listenerManager: FirestoreListenerManager
 ) : UserRepository {
 
     private val currentUserId: String?
@@ -68,6 +72,36 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getUserById(userId: String): Result<User?> = withContext(Dispatchers.IO) {
+        try {
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                val user = doc.toObject(User::class.java)
+                Result.success(user)
+            } else {
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getInitialsById(userId: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                val firstName = doc.getString("firstName") ?: ""
+                val lastName = doc.getString("lastName") ?: ""
+                val initials = "${firstName.firstOrNull()?.uppercase() ?: ""}${lastName.firstOrNull()?.uppercase() ?: ""}"
+                Result.success(initials)
+            } else {
+                Result.failure(Exception("User not found"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun addFriend(currentUserId: String, friendEmail: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             if (friendEmail.lowercase() == getCurrentUserEmail(currentUserId)) {
@@ -79,7 +113,9 @@ class UserRepositoryImpl @Inject constructor(
                 .get()
                 .await()
 
-            if (querySnapshot.isEmpty) return@withContext Result.failure(Exception("No user found with this email"))
+            if (querySnapshot.isEmpty) {
+                return@withContext Result.failure(Exception("No user found with this email"))
+            }
 
             val friendUserDoc = querySnapshot.documents[0]
             val friendUserId = friendUserDoc.id
@@ -100,7 +136,6 @@ class UserRepositoryImpl @Inject constructor(
             if (isAlreadyFriend) {
                 return@withContext Result.failure(Exception("This user is already on your friend list"))
             }
-
             val pendingRequestQuery = firestore.collection("users")
                 .document(friendUserId)
                 .collection("friendRequests")
@@ -117,7 +152,7 @@ class UserRepositoryImpl @Inject constructor(
                 fromUserId = currentUserId,
                 toUserId = friendUserId,
                 status = FriendRequestStatus.PENDING,
-                timestamp = Timestamp.now(),
+                timestamp = com.google.firebase.Timestamp.now(),
                 requestId = ""
             )
 
@@ -130,9 +165,45 @@ class UserRepositoryImpl @Inject constructor(
             val requestId = documentReference.id
             documentReference.update("requestId", requestId).await()
 
+            val senderName = getSenderName(currentUserId)
+            sendFriendRequestNotification(currentUserId, friendUserId, requestId, senderName)
+
             Result.success(requestId)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private suspend fun getSenderName(userId: String): String {
+        return try {
+            val userDoc = firestore.collection("users").document(userId).get().await()
+            val firstName = userDoc.getString("firstName") ?: ""
+            val lastName = userDoc.getString("lastName") ?: ""
+            val fullName = "$firstName $lastName".trim()
+            fullName.ifEmpty { userDoc.getString("email")?.split("@")?.first() ?: "A user" }
+        } catch (_: Exception) {
+            "A user"
+        }
+    }
+
+    private suspend fun sendFriendRequestNotification(
+        senderUserId: String,
+        recipientUserId: String,
+        requestId: String,
+        senderName: String
+    ) {
+        try {
+            val data = hashMapOf(
+                "recipientUserId" to recipientUserId,
+                "fromUserId" to senderUserId,
+                "fromUserName" to senderName,
+                "requestId" to requestId
+            )
+
+            Firebase.functions("europe-west1").getHttpsCallable("sendFriendRequestNotification")
+                .call(data)
+                .await()
+        } catch (_: Exception) {
         }
     }
 
@@ -141,7 +212,6 @@ class UserRepositoryImpl @Inject constructor(
             .document(userId)
             .get()
             .await()
-
         userDoc.getString("email") ?: throw Exception("Current user email not found")
     }
 
@@ -152,11 +222,9 @@ class UserRepositoryImpl @Inject constructor(
                 .collection("friends")
                 .get()
                 .await()
-
             val friends = snapshot.documents.mapNotNull { doc ->
                 doc.toObject(Friend::class.java)
             }
-
             Result.success(friends)
         } catch (e: Exception) {
             Result.failure(e)
@@ -165,31 +233,40 @@ class UserRepositoryImpl @Inject constructor(
 
     override suspend fun getPendingFriendRequests(userId: String): Result<List<User>> = withContext(Dispatchers.IO) {
         try {
-            val snapshot = firestore.collection("users")
-                .document(userId)
-                .collection("friendRequests")
+            listenerManager.addActiveQuery("collectionGroup:friendRequests for user: $userId")
+            val requestDocs = firestore.collectionGroup("friendRequests")
                 .whereEqualTo("toUserId", userId)
-                .whereEqualTo("status", FriendRequestStatus.PENDING.name)
+                .whereEqualTo("status", "PENDING")
                 .get()
                 .await()
+                .documents
 
-            val pendingRequests = snapshot.documents.mapNotNull { doc ->
-                val friendRequest = doc.toObject(FriendRequest::class.java)
-                if (friendRequest != null) {
-                    val senderDoc = firestore.collection("users")
-                        .document(friendRequest.fromUserId)
-                        .get()
-                        .await()
-
-                    senderDoc.toObject(User::class.java)
-                } else {
-                    null
-                }
+            if (requestDocs.isEmpty()) {
+                return@withContext Result.success(emptyList())
             }
 
+            val pendingRequests = mutableListOf<User>()
+            for (doc in requestDocs) {
+                try {
+                    val fromUserId = doc.getString("fromUserId")
+                        ?: throw Exception("Missing fromUserId in request ${doc.id}")
+                    val userDoc = firestore.collection("users")
+                        .document(fromUserId)
+                        .get()
+                        .await()
+                    if (!userDoc.exists()) {
+                        continue
+                    }
+                    userDoc.toObject(User::class.java)?.let { user ->
+                        pendingRequests.add(user.copy(uid = fromUserId))
+                    }
+                } catch (_: Exception) {
+                    continue
+                }
+            }
             Result.success(pendingRequests)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception("Failed to load pending requests: ${e.message ?: "Unknown error"}"))
         }
     }
 
@@ -220,25 +297,57 @@ class UserRepositoryImpl @Inject constructor(
 
             val requestDoc = requestQuery.documents[0]
 
-            val senderFullName = "${senderUserDoc.getString("firstName")} ${senderUserDoc.getString("lastName")}".trim()
-            firestore.collection("users").document(currentUserId)
+            val senderFirstName = senderUserDoc.getString("firstName") ?: ""
+            val senderLastName = senderUserDoc.getString("lastName") ?: ""
+            val senderEmail = senderUserDoc.getString("email") ?: ""
+            val senderDisplayName = if (senderFirstName.isNotEmpty() || senderLastName.isNotEmpty()) {
+                "$senderFirstName $senderLastName".trim()
+            } else {
+                senderEmail.takeIf { it.isNotBlank() } ?: senderUserId.take(8)
+            }
+
+            val currentFirstName = currentUserDoc.getString("firstName") ?: ""
+            val currentLastName = currentUserDoc.getString("lastName") ?: ""
+            val currentEmail = currentUserDoc.getString("email") ?: ""
+            val currentDisplayName = if (currentFirstName.isNotEmpty() || currentLastName.isNotEmpty()) {
+                "$currentFirstName $currentLastName".trim()
+            } else {
+                currentEmail.takeIf { it.isNotBlank() } ?: currentUserId.take(8)
+            }
+
+            val batch = firestore.batch()
+
+            val currentUserFriendRef = firestore.collection("users")
+                .document(currentUserId)
                 .collection("friends")
                 .document(senderUserId)
-                .set(Friend(senderUserId, senderFullName, senderUserDoc.getString("email") ?: ""))
-                .await()
 
-            val currentUserFullName = "${currentUserDoc.getString("firstName")} ${currentUserDoc.getString("lastName")}".trim()
-            firestore.collection("users").document(senderUserId)
+            batch.set(currentUserFriendRef, mapOf(
+                "friendId" to senderUserId,
+                "displayName" to senderDisplayName,
+                "email" to senderEmail,
+                "addedAt" to FieldValue.serverTimestamp()
+            ))
+
+            val senderFriendRef = firestore.collection("users")
+                .document(senderUserId)
                 .collection("friends")
                 .document(currentUserId)
-                .set(Friend(currentUserId, currentUserFullName, currentUserDoc.getString("email") ?: ""))
-                .await()
 
-            firestore.collection("users").document(currentUserId)
+            batch.set(senderFriendRef, mapOf(
+                "friendId" to currentUserId,
+                "displayName" to currentDisplayName,
+                "email" to currentEmail,
+                "addedAt" to FieldValue.serverTimestamp()
+            ))
+
+            val requestRef = firestore.collection("users")
+                .document(currentUserId)
                 .collection("friendRequests")
                 .document(requestDoc.id)
-                .delete()
-                .await()
+            batch.delete(requestRef)
+
+            batch.commit().await()
 
             Result.success(Unit)
         } catch (e: Exception) {

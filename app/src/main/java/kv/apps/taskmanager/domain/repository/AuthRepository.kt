@@ -1,5 +1,6 @@
 package kv.apps.taskmanager.domain.repository
 
+import android.content.Intent
 import kotlinx.coroutines.flow.Flow
 import kv.apps.taskmanager.domain.model.User
 
@@ -17,4 +18,7 @@ interface AuthRepository {
     suspend fun resetPassword(email: String): Result<Unit>
     suspend fun getCurrentUserId(): String?
     suspend fun observeAuthState(): Flow<User?>
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit>
+    fun getGoogleSignInIntent(): Intent?
+    suspend fun handleGoogleSignInResult(data: Intent?): Result<User>
 }

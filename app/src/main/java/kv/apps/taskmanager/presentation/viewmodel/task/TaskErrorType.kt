@@ -7,5 +7,6 @@ enum class TaskErrorType {
     DELETE_ERROR,
     FETCH_ERROR,
     FILTER_ERROR,
-    TEAM_MEMBERS_ERROR
+    MEMBERS_ERROR,
+    COMMENT_ERROR
 }

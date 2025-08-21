@@ -8,10 +8,13 @@ data class UserFriendsUiState(
     val pendingFriendRequests: Result<List<User>>? = null,
     val addFriendState: Result<String>? = null,
     val deleteFriendState: Result<Unit>? = null,
+    val targetUser: User? = null,
     val acceptFriendRequestState: Result<Unit>? = null,
     val rejectFriendRequestState: Result<Unit>? = null,
     val isLoading: Boolean = false,
     val isLoadingFriends: Boolean = false,
     val isLoadingPendingRequests: Boolean = false,
-    val error: String? = null
+    val isLoadingTargetUser: Boolean = false,
+    val error: String? = null,
+    val userDetails: Map<String, User> = emptyMap()
 )

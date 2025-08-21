@@ -1,3 +1,10 @@
 <resources>
-    <string name="app_name">Task Manager</string>
+    <string name="app_name">Plan Task</string>
+    <string name="default_notification_channel_id">default_channel</string>
+    <string name="notification_channel_name">App Notifications</string>
+    <string name="notification_channel_description">Important updates and alerts</string>
+    <string name="new_notification">New notification</string>
+    <string name="notification_permission_denied">Notification permission denied - some features may not work</string>
+    <string name="notification_permission_rationale">Allow notifications to receive important updates</string>
+    <string name="default_web_client_id">685437743635-kpu4sbgs4n3ab387ioouv0s9s6ifcbj0.apps.googleusercontent.com</string>
 </resources>

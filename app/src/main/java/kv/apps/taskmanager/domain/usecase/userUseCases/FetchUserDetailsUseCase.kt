@@ -7,7 +7,7 @@ import javax.inject.Inject
 class FetchUserDetailsUseCase @Inject constructor(
     private val userRepository: UserRepository
 ) {
-    suspend operator fun invoke(): Result<User> {
+    suspend operator fun invoke(userId: String): Result<User> {
         return userRepository.getUserDetails()
     }
 }

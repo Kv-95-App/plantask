@@ -1,5 +1,6 @@
 package kv.apps.taskmanager.presentation.screens.authScreens
 
+import android.annotation.SuppressLint
 import android.util.Patterns
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,13 +52,14 @@ import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.R
 import kv.apps.taskmanager.presentation.navigation.Screen
-import kv.apps.taskmanager.presentation.shared.uiComposables.rememberCustomDatePicker
+import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.rememberCustomDatePicker
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthErrorType
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.format.DateTimeFormatter
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun RegisterScreen(
     navController: NavHostController,
@@ -104,11 +105,10 @@ fun RegisterScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackBarHostState) }
-    ) { paddingValues ->
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(backgroundColor)
         ) {
             Column(
@@ -123,7 +123,7 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Image(
-                    painter = painterResource(id = R.drawable.plantask_transparent),
+                    painter = painterResource(id = R.drawable.plantasklogo),
                     contentDescription = "Task Management",
                     modifier = Modifier
                         .fillMaxWidth()

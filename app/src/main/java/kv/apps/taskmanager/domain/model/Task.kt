@@ -7,5 +7,6 @@ data class Task(
     val title: String = "",
     val taskDetails: String = "",
     val dueDate: String = "",
-    val projectId: String = ""
+    val projectId: String = "",
+    val commentCount: Long = 0
 )

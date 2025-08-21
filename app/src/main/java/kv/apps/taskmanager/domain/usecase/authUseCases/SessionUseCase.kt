@@ -1,7 +1,6 @@
 package kv.apps.taskmanager.domain.usecase.authUseCases
 
 import kotlinx.coroutines.flow.Flow
-import kv.apps.taskmanager.domain.model.User
 import kv.apps.taskmanager.domain.repository.UserPreferencesRepository
 import javax.inject.Inject
 
@@ -14,10 +13,6 @@ class SessionUseCase @Inject constructor(
 
     fun getUserSession(): Flow<String?> {
         return userPreferencesRepository.getUserSession()
-    }
-
-    suspend fun clearUserSession() {
-        userPreferencesRepository.clearUserSession()
     }
 
     suspend fun saveKeepLoggedIn(keepLoggedIn: Boolean) {

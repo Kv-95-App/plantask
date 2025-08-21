@@ -6,24 +6,28 @@
         <item name="colorOnPrimary">@color/black</item>
         <item name="android:windowBackground">@color/background_color</item>
         <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:padding">0dp</item>
     </style>
     <style name="Theme.TaskManager" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- System bar colors -->
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@color/background_color</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-
-        <!-- Cutout handling -->
         <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
-
-        <!-- Background colors -->
         <item name="android:windowBackground">@color/background_color</item>
         <item name="colorSurface">@color/background_color</item>
-
-        <!-- Edge-to-edge configuration -->
         <item name="android:fitsSystemWindows">false</item>
-
-        <!-- Status bar icons color -->
         <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <item name="android:windowSharedElementsUseOverlay">true</item>
+    </style>
+    <style name="Theme.TaskManager.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/background_color</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/light_gray</item>
+        <item name="postSplashScreenTheme">@style/Theme.TaskManager</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">@color/background_color</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="27">shortEdges</item>
+        <item name="android:fitsSystemWindows">true</item>
+        <item name="android:windowSharedElementsUseOverlay">true</item>
     </style>
 </resources>

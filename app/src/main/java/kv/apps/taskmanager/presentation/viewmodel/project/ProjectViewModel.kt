@@ -3,6 +3,7 @@ package kv.apps.taskmanager.presentation.viewmodel.project
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,10 +14,13 @@ import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.usecase.projectsUseCases.ProjectUseCases
 import javax.inject.Inject
+import kotlin.let
 
 @HiltViewModel
 class ProjectViewModel @Inject constructor(
-    private val projectUseCases: ProjectUseCases
+    private val projectUseCases: ProjectUseCases,
+    private val auth: FirebaseAuth
+
 ) : ViewModel() {
 
     private val _projects = MutableStateFlow<List<Project>>(emptyList())
@@ -43,11 +47,16 @@ class ProjectViewModel @Inject constructor(
     private val _teamMembersError = MutableStateFlow<String?>(null)
     val teamMembersError: StateFlow<String?> = _teamMembersError.asStateFlow()
 
+    private val _notificationsLoading = MutableStateFlow(false)
+    val notificationsLoading: StateFlow<Boolean> = _notificationsLoading.asStateFlow()
+
     private val _invitations = MutableStateFlow<List<ProjectInvitation>>(emptyList())
     val invitations: StateFlow<List<ProjectInvitation>> = _invitations.asStateFlow()
 
     private val _invitationActionState = MutableStateFlow<Result<Unit>?>(null)
     val invitationActionState: StateFlow<Result<Unit>?> = _invitationActionState.asStateFlow()
+
+    private val invitationsCache = mutableStateMapOf<String, List<ProjectInvitation>>()
 
     private val _creatorNamesCache = mutableStateMapOf<String, Pair<String, String>>()
     val creatorNamesCache: Map<String, Pair<String, String>> get() = _creatorNamesCache
@@ -58,11 +67,11 @@ class ProjectViewModel @Inject constructor(
     private val _teamMembersCache = mutableStateMapOf<String, List<TeamMember>>()
 
     private val _ownerDetails = MutableStateFlow<Pair<String, String>?>(null)
-    val ownerDetails: StateFlow<Pair<String, String>?> = _ownerDetails.asStateFlow()
 
-    fun fetchTeamMembersForProject(projectId: String) {
-        _teamMembersCache[projectId]?.let { cachedMembers ->
-            _teamMembersWithDetails.value = cachedMembers
+
+    fun fetchTeamMembersForProject(projectId: String, forceRefresh: Boolean = false) {
+        if (!forceRefresh && _teamMembersCache[projectId] != null) {
+            _teamMembersWithDetails.value = _teamMembersCache[projectId]!!
             return
         }
 
@@ -201,9 +210,18 @@ class ProjectViewModel @Inject constructor(
             }
         }
     }
+    fun isCurrentUserCreator(projectId: String): Boolean {
+        val project = _projects.value.find { it.id == projectId }
+        return project?.createdBy == auth.currentUser?.uid
+    }
 
 
-    fun removeTeamMembersFromProject(projectId: String, teamMemberId: String) {
+    fun removeTeamMembersFromProject(projectId: String, teamMemberId: String, onSuccess: () -> Int) {
+        if (!isCurrentUserCreator(projectId)) {
+            _error.value = "Only project creator can remove members"
+            return
+        }
+
         _loading.value = true
         viewModelScope.launch {
             try {
@@ -215,17 +233,16 @@ class ProjectViewModel @Inject constructor(
 
                 projectUseCases.removeTeamMembersFromProject(projectId, teamMemberId)
                     .onSuccess {
-                        fetchTeamMembersForProject(projectId)
+                        fetchTeamMembersForProject(projectId, true)
                         _error.value = null
-                        fetchAllProjects()
                     }
                     .onFailure { e ->
                         _error.value = "Failed to remove team member: ${e.message}"
-                        fetchAllProjects()
+                        fetchTeamMembersForProject(projectId, true)
                     }
             } catch (e: Exception) {
                 _error.value = "Unexpected error: ${e.message}"
-                fetchAllProjects()
+                fetchTeamMembersForProject(projectId, true)
             } finally {
                 _loading.value = false
             }
@@ -282,6 +299,11 @@ class ProjectViewModel @Inject constructor(
     }
 
     fun sendProjectInvitation(invitation: ProjectInvitation) {
+        if (invitation.fromUserId == invitation.toUserId) {
+            _error.value = "Cannot invite yourself"
+            return
+        }
+
         _loading.value = true
         viewModelScope.launch {
             try {
@@ -294,7 +316,9 @@ class ProjectViewModel @Inject constructor(
                     .onSuccess {
                         _invitationActionState.value = Result.success(Unit)
                         _error.value = null
-                        getPendingProjectInvitations(invitation.toUserId)
+                        if (invitation.toUserId == auth.currentUser?.uid) {
+                            getPendingProjectInvitations(invitation.toUserId, true)
+                        }
                     }
                     .onFailure { e ->
                         _invitations.value = _invitations.value - tempInvitation
@@ -308,55 +332,93 @@ class ProjectViewModel @Inject constructor(
             }
         }
     }
+    fun getPendingProjectInvitations(userId: String, forceRefresh: Boolean = false) {
+        if (!forceRefresh && invitationsCache.containsKey(userId)) {
+            _invitations.value = invitationsCache[userId] ?: emptyList()
+            return
+        }
 
-    fun getPendingProjectInvitations(userId: String) {
-        _loading.value = true
         viewModelScope.launch {
-            projectUseCases.getPendingProjectInvitations(userId)
-                .onSuccess { invitations ->
-                    _invitations.value = invitations
-                    _error.value = null
-                }
-                .onFailure { e ->
-                    _error.value = "Failed to fetch invitations: ${e.message}"
-                }
-            _loading.value = false
+            _notificationsLoading.value = true
+            try {
+                projectUseCases.getPendingProjectInvitations(userId)
+                    .onSuccess { invitations ->
+                        val filtered = invitations.filter { it.toUserId == userId }
+                        _invitations.value = filtered
+                        invitationsCache[userId] = filtered
+                        _error.value = null
+                    }
+                    .onFailure { e ->
+                        _error.value = e.message
+                        _invitations.value = emptyList()
+                        invitationsCache.remove(userId)
+                    }
+            } catch (e: Exception) {
+                _error.value = "Unexpected error: ${e.message}"
+                _invitations.value = emptyList()
+                invitationsCache.remove(userId)
+            } finally {
+                _notificationsLoading.value = false
+            }
         }
     }
 
     fun acceptInvitation(invitationId: String, projectId: String, userId: String) {
-        _loading.value = true
         viewModelScope.launch {
-            projectUseCases.acceptInvitation(invitationId, projectId, userId)
-                .onSuccess {
-                    getPendingProjectInvitations(userId)
-                    _invitationActionState.value = Result.success(Unit)
-                }
-                .onFailure { e ->
-                    _invitationActionState.value = Result.failure(e)
-                }
-            _loading.value = false
+            _notificationsLoading.value = true
+            try {
+                projectUseCases.acceptInvitation(invitationId, projectId, userId)
+                    .onSuccess {
+                        removeInvitation(invitationId)
+                        _invitationActionState.value = Result.success(Unit)
+                    }
+                    .onFailure { e ->
+                        _invitationActionState.value = Result.failure(e)
+                        _error.value = "Failed to accept invitation: ${e.message}"
+                    }
+            } finally {
+                _notificationsLoading.value = false
+            }
         }
     }
 
     fun rejectInvitation(invitationId: String, projectId: String, userId: String) {
-        _loading.value = true
         viewModelScope.launch {
-            projectUseCases.rejectInvitation(invitationId, projectId, userId)
-                .onSuccess {
-                    getPendingProjectInvitations(userId)
-                    _invitationActionState.value = Result.success(Unit)
-                }
-                .onFailure { e ->
-                    _invitationActionState.value = Result.failure(e)
-                }
-            _loading.value = false
+            _notificationsLoading.value = true
+            try {
+                projectUseCases.rejectInvitation(
+                    invitationId, projectId,
+                    userId
+                )
+                    .onSuccess {
+                        removeInvitation(invitationId)
+                        _invitationActionState.value = Result.success(Unit)
+                    }
+                    .onFailure { e ->
+                        _invitationActionState.value = Result.failure(e)
+                        _error.value = "Failed to reject invitation: ${e.message}"
+                    }
+            } finally {
+                _notificationsLoading.value = false
+            }
+        }
+    }
+    fun removeInvitation(invitationId: String) {
+        _invitations.value = _invitations.value.filter { it.invitationId != invitationId }
+        auth.currentUser?.uid?.let { userId ->
+            invitationsCache[userId] = invitationsCache[userId]?.filter { it.invitationId != invitationId } as List<ProjectInvitation>
         }
     }
 
     fun clearInvitationActionState() {
         _invitationActionState.value = null
     }
+
+    fun clearNotificationsCache() {
+        invitationsCache.clear()
+        _invitations.value = emptyList()
+    }
+
 
     fun clearError() {
         _error.value = null

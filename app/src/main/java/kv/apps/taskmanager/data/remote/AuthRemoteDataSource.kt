@@ -8,7 +8,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class AuthRemoteDataSource @Inject constructor(
-    val firebaseAuth: FirebaseAuth
+    val firebaseAuth: FirebaseAuth,
+    private val googleSignInHelper: GoogleSignInHelper,
+    private val listenerManager: FirestoreListenerManager
 ) {
 
     suspend fun signUpWithEmailAndPassword(email: String, password: String) {
@@ -25,8 +27,24 @@ class AuthRemoteDataSource @Inject constructor(
 
     suspend fun logout() {
         withContext(Dispatchers.IO) {
+            listenerManager.removeAllListeners()
+            delay(20)
+            googleSignInHelper.signOut()
             firebaseAuth.signOut()
-            delay(50)
+            delay(30)
+        }
+    }
+
+    suspend fun changePassword(email: String, newPassword: String) {
+        withContext(Dispatchers.IO) {
+            val user = firebaseAuth.currentUser
+            user?.updatePassword(newPassword)?.await()
+
+            listenerManager.removeAllListeners()
+            delay(20)
+
+            firebaseAuth.signOut()
+            delay(30)
         }
     }
 }

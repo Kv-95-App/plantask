@@ -9,6 +9,7 @@ import kv.apps.taskmanager.domain.repository.ProjectRepository
 import kv.apps.taskmanager.domain.repository.TaskRepository
 import kv.apps.taskmanager.domain.repository.UserPreferencesRepository
 import kv.apps.taskmanager.domain.repository.UserRepository
+import kv.apps.taskmanager.domain.usecase.authUseCases.ChangePasswordUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.FetchUserDetailsUseCase
 import kv.apps.taskmanager.domain.usecase.authUseCases.LoginUseCase
 import kv.apps.taskmanager.domain.usecase.authUseCases.RegisterUseCase
@@ -21,6 +22,7 @@ import kv.apps.taskmanager.domain.usecase.userUseCases.AddFriendUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.DeleteFriendUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.GetFriendsUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.GetPendingFriendRequestsUseCase
+import kv.apps.taskmanager.domain.usecase.userUseCases.GetUserByIdUseCase
 import kv.apps.taskmanager.domain.usecase.userUseCases.RejectFriendRequestUseCase
 import javax.inject.Singleton
 
@@ -125,4 +127,20 @@ object UseCaseModule {
     ): FetchUserDetailsUseCase {
         return FetchUserDetailsUseCase(userRepository)
     }
+    @Provides
+    @Singleton
+    fun provideChangePasswordUseCase(
+        authRepository: AuthRepository
+    ): ChangePasswordUseCase {
+        return ChangePasswordUseCase(authRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetUserByIdUseCase(
+        userRepository: UserRepository
+    ): GetUserByIdUseCase {
+        return GetUserByIdUseCase(userRepository)
+    }
+
 }

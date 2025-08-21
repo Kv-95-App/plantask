@@ -19,11 +19,11 @@
           "client_type": 1,
           "android_info": {
             "package_name": "kv.apps.taskmanager",
-            "certificate_hash": "8bdf5d98a704871c854cfd5aab979c8458d1a9dc"
+            "certificate_hash": "5077121da7c36a857278a14ca00e5c0fd892f5e4"
           }
         },
         {
-          "client_id": "685437743635-gqoa3r3gfa7bru9lbpd1g6ke3q1f6n2o.apps.googleusercontent.com",
+          "client_id": "685437743635-kpu4sbgs4n3ab387ioouv0s9s6ifcbj0.apps.googleusercontent.com",
           "client_type": 3
         }
       ],

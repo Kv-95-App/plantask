@@ -59,12 +59,13 @@ class ProjectUseCases @Inject constructor(
             errorPrefix = "Failed to send invitation"
         )
 
-    suspend fun getPendingProjectInvitations(toUserId: String): Result<List<ProjectInvitation>> =
-        wrapRepositoryCall(
-            repositoryCall = { repository.getPendingProjectInvitations(toUserId) },
-            errorPrefix = "Failed to get pending invitations"
-        )
-
+    suspend fun getPendingProjectInvitations(userId: String): Result<List<ProjectInvitation>> {
+        return try {
+            repository.getPendingProjectInvitations(userId)
+        } catch (e: Exception) {
+            throw Exception("Failed to load pending invitations: ${e.message}")
+        }
+    }
     suspend fun acceptInvitation(
         invitationId: String,
         projectId: String,

@@ -1,7 +1,8 @@
 package kv.apps.taskmanager.presentation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -12,19 +13,23 @@ import androidx.navigation.navArgument
 import kv.apps.taskmanager.presentation.screens.authScreens.ForgotPasswordScreen
 import kv.apps.taskmanager.presentation.screens.authScreens.LoginScreen
 import kv.apps.taskmanager.presentation.screens.authScreens.RegisterScreen
-import kv.apps.taskmanager.presentation.screens.friendScreens.AddFriendScreen
-import kv.apps.taskmanager.presentation.screens.friendScreens.FriendsScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.AddProjectScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.CompletedProjectsScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.OngoingProjectsScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectDetailScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectListScreen
-import kv.apps.taskmanager.presentation.screens.projectScreens.ProjectMembers
-import kv.apps.taskmanager.presentation.screens.taskScreens.AddTaskScreen
-import kv.apps.taskmanager.presentation.screens.taskScreens.TaskDetailScreen
-import kv.apps.taskmanager.presentation.screens.utilScreens.GetStartedScreen
-import kv.apps.taskmanager.presentation.screens.utilScreens.NotificationsScreen
-import kv.apps.taskmanager.presentation.screens.utilScreens.SplashScreen
+import kv.apps.taskmanager.presentation.screens.friendSection.screens.AddFriendScreen
+import kv.apps.taskmanager.presentation.screens.friendSection.screens.FriendsScreen
+import kv.apps.taskmanager.presentation.screens.profileScreens.Profile
+import kv.apps.taskmanager.presentation.screens.profileScreens.TargetProfileScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.AddProjectScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.CompletedProjectDetailScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.CompletedProjectsScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.OngoingProjectsScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.ProjectDetailScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.ProjectListScreen
+import kv.apps.taskmanager.presentation.screens.projectSection.screens.ProjectMembers
+import kv.apps.taskmanager.presentation.screens.taskSection.screens.AddTaskScreen
+import kv.apps.taskmanager.presentation.screens.taskSection.screens.CompletedTaskDetailScreen
+import kv.apps.taskmanager.presentation.screens.taskSection.screens.TaskDetailScreen
+import kv.apps.taskmanager.presentation.screens.utils.screens.GetStartedScreen
+import kv.apps.taskmanager.presentation.screens.utils.screens.NotificationsScreen
+import kv.apps.taskmanager.presentation.screens.utils.screens.SplashScreen
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
@@ -37,24 +42,34 @@ fun NavGraph(
     taskViewModel: TaskViewModel = hiltViewModel(),
     userFriendsViewModel: UserFriendsViewModel = hiltViewModel(),
     projectViewModel: ProjectViewModel = hiltViewModel(),
-    modifier: Modifier
+    onGoogleSignInClicked: () -> Unit
 ) {
-    val isLoggedIn = authViewModel.uiState.collectAsStateWithLifecycle().value.userId != null
+    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
+
+
+    LaunchedEffect(authUiState.isLoggingOut) {
+        if (authUiState.isLoggingOut) {
+            navController.navigate(Screen.SplashScreen.route) {
+                popUpTo(navController.graph.id) { inclusive = true }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
-        startDestination = if (isLoggedIn == true) Screen.ProjectList.route else Screen.SplashScreen.route
+        startDestination = if (authUiState.userId != null && !authUiState.isLoggingOut) Screen.ProjectList.route else Screen.SplashScreen.route
     ) {
         // Authentication Screens
         composable(route = Screen.Login.route) {
             LoginScreen(
                 navController = navController,
+                authViewModel = authViewModel,
                 onLoginSuccess = {
                     navController.navigate(Screen.ProjectList.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        popUpTo("login") { inclusive = true }
                     }
                 },
-                authViewModel = authViewModel
+                onGoogleSignInClicked = onGoogleSignInClicked
             )
         }
         composable(route = Screen.Register.route) {
@@ -112,6 +127,20 @@ fun NavGraph(
         }
 
         composable(
+            route = Screen.CompletedProjectDetail.route,
+            arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            CompletedProjectDetailScreen(
+                navController = navController,
+                projectId = projectId,
+                projectViewModel = projectViewModel,
+                taskViewModel = taskViewModel,
+                authViewModel = authViewModel
+            )
+        }
+
+        composable(
             route = Screen.ProjectMembers.route,
             arguments = listOf(
                 navArgument("projectId") {
@@ -129,7 +158,8 @@ fun NavGraph(
                 projectId = projectId,
                 projectViewModel = projectViewModel,
                 navController = navController,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                showInvites = false
             )
         }
 
@@ -167,7 +197,6 @@ fun NavGraph(
                 onBackPressed = { navController.popBackStack() },
                 taskViewModel = taskViewModel,
                 projectViewModel = projectViewModel,
-                userFriendsViewModel = userFriendsViewModel,
                 authViewModel = authViewModel,
                 navController = navController
             )
@@ -191,12 +220,31 @@ fun NavGraph(
             )
         }
 
-        // Friend Screens
+        composable(
+            route = Screen.CompletedTaskDetail.route,
+            arguments = listOf(
+                navArgument("taskId") { type = NavType.StringType },
+                navArgument("projectId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+
+            CompletedTaskDetailScreen(
+                taskId = taskId,
+                projectId = projectId,
+                taskViewModel = taskViewModel,
+                authViewModel = authViewModel,
+                navController = navController
+            )
+        }
+
         composable(route = Screen.Friends.route) {
             FriendsScreen(
                 navController = navController,
                 userFriendsViewModel = userFriendsViewModel,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                startWithRequestsTab = false
             )
         }
 
@@ -207,7 +255,27 @@ fun NavGraph(
                 authViewModel = authViewModel
             )
         }
-
+        composable(route = Screen.FriendRequests.route) {
+            FriendsScreen(
+                navController = navController,
+                userFriendsViewModel = userFriendsViewModel,
+                authViewModel = authViewModel,
+                startWithRequestsTab = true
+            )
+        }
+        composable(
+            route = Screen.ProjectInvites.route,
+            arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            ProjectMembers(
+                projectId = projectId,
+                projectViewModel = projectViewModel,
+                navController = navController,
+                authViewModel = authViewModel,
+                showInvites = true
+            )
+        }
 
         // Utility Screens
         composable(route = Screen.SplashScreen.route) {
@@ -220,11 +288,14 @@ fun NavGraph(
         composable(route = Screen.GetStarted.route) {
             GetStartedScreen(
                 navController = navController
-                )
+            )
         }
 
         composable(route = Screen.Profile.route) {
-
+            Profile(
+                navController = navController,
+                authViewModel = authViewModel
+            )
         }
 
         composable(route = Screen.Notifications.route) {
@@ -235,6 +306,16 @@ fun NavGraph(
             )
         }
 
-
+        composable(
+            route = Screen.TargetProfile.route,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            TargetProfileScreen(
+                navController = navController,
+                userId = userId,
+                userFriendsViewModel = userFriendsViewModel
+            )
+        }
     }
 }

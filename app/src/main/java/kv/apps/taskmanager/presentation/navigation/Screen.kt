@@ -15,9 +15,15 @@ sealed class Screen(val route: String) {
     object ProjectMembers : Screen("project_members/{projectId}") {
         fun createRoute(projectId: String) = "project_members/$projectId"
     }
+    object CompletedProjectDetail : Screen("completed_project_detail/{projectId}") {
+        fun createRoute(projectId: String) = "completed_project_detail/$projectId"
+    }
     // Task Screens
     object TaskDetail : Screen("task_detail/{taskId}/{projectId}") {
         fun createRoute(taskId: String, projectId: String) = "task_detail/$taskId/$projectId"
+    }
+    object CompletedTaskDetail : Screen("completed_task_detail/{taskId}/{projectId}") {
+        fun createRoute(taskId: String, projectId: String) = "completed_task_detail/$taskId/$projectId"
     }
     object AddTask : Screen("add_task/{projectId}") {
         fun createRoute(projectId: String) = "add_task/$projectId"
@@ -30,4 +36,11 @@ sealed class Screen(val route: String) {
     object SplashScreen : Screen("splash_screen")
     object Profile : Screen("profile")
     object Notifications : Screen("notifications")
+    object TargetProfile : Screen("target_profile/{userId}") {
+        fun createRoute(userId: String) = "target_profile/$userId"
+    }
+    object FriendRequests : Screen("friend_requests")
+    object ProjectInvites : Screen("project_invites/{projectId}") {
+        fun createRoute(projectId: String) = "project_invites/$projectId"
+    }
 }

@@ -1,11 +1,14 @@
 package kv.apps.taskmanager.domain.model
 
-import com.google.firebase.Timestamp
+import com.google.firebase.firestore.PropertyName
+import java.security.Timestamp
 
 data class FriendRequest(
-    val fromUserId: String = "",
-    val toUserId: String = "",
-    val status: FriendRequestStatus = FriendRequestStatus.PENDING,
-    val timestamp: Timestamp = Timestamp.now(),
-    val requestId: String = ""
-)
+    @PropertyName("requestId") val requestId: String = "",
+    @PropertyName("fromUserId") val fromUserId: String = "",
+    @PropertyName("toUserId") val toUserId: String = "",
+    @PropertyName("status") val status: FriendRequestStatus = FriendRequestStatus.PENDING,
+    @PropertyName("timestamp") val timestamp: com.google.firebase.Timestamp = com.google.firebase.Timestamp.now()
+) {
+    constructor() : this("", "", "", FriendRequestStatus.PENDING, com.google.firebase.Timestamp.now())
+}

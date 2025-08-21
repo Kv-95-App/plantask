@@ -7,6 +7,6 @@ data class ProjectInvitation(
     val projectId: String = "",
     val fromUserId: String = "",
     val toUserId: String = "",
-    val status: String = "pending",
+    val status: String = ProjectRequestStatus.PENDING.name,
     val timestamp: Timestamp = Timestamp.now()
 )

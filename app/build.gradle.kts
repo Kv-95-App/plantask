@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.implementation
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,14 +11,15 @@ plugins {
 
 android {
     namespace = "kv.apps.taskmanager"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "kv.apps.taskmanager"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        vectorDrawables.useSupportLibrary = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -29,11 +32,12 @@ android {
             }
 
             create("release") {
-                storeFile = file("my-release-key.jks")
+                storeFile = file("plantaskkeystore.jks")
                 storePassword = "Lenkorr1239#"
-                keyAlias = "plantask_key"
+                keyAlias = "plantask"
                 keyPassword = "Lenkorr1239#"
             }
+        }
 
         buildTypes {
             release {
@@ -45,7 +49,6 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
-    }
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -71,6 +74,7 @@ dependencies {
     implementation ("androidx.compose.material:material-icons-extended:1.7.8")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     //coil
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
@@ -92,17 +96,18 @@ dependencies {
 
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+    implementation ("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-functions")
+
 
     // Google Play Services
-    implementation("com.google.android.gms:play-services-safetynet:18.1.0")
-    implementation("com.google.android.gms:play-services-base:18.7.0")
-    implementation ("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.google.android.gms:play-services-auth:21.1.0")
+
 
     // Material3
-    implementation("androidx.compose.material3:material3:1.3.2")
     implementation(libs.material3)
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
@@ -126,3 +131,4 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+

@@ -3,6 +3,7 @@ package kv.apps.taskmanager.data.repositoryImpl
 import kotlinx.coroutines.flow.Flow
 import kv.apps.taskmanager.data.remote.TaskRemoteDataSource
 import kv.apps.taskmanager.domain.model.Task
+import kv.apps.taskmanager.domain.model.TaskComment
 import kv.apps.taskmanager.domain.model.User
 import kv.apps.taskmanager.domain.repository.TaskRepository
 import java.time.LocalDate
@@ -42,5 +43,51 @@ class TaskRepositoryImpl @Inject constructor(
 
     override suspend fun getProjectUsers( projectId: String): Flow<List<User>> {
         return taskRemoteDataSource.getProjectUsers(projectId)
+    }
+    override suspend fun getMembersOfTasks(projectId: String,taskId: String): List<User> {
+        return taskRemoteDataSource.getMembersOfTasks(projectId, taskId)
+    }
+    override suspend fun getTaskAssignedUsersInitials(projectId: String, taskId: String): Map<String, String> {
+        return taskRemoteDataSource.getTaskAssignedUsersInitials(projectId, taskId)
+    }
+    override suspend fun addCommentToTask(
+        projectId: String,
+        taskId: String,
+        message: String
+    ): Result<String> {
+        return taskRemoteDataSource.addCommentToTask(projectId, taskId, message)
+    }
+
+    override suspend fun getTaskComments(
+        projectId: String,
+        taskId: String,
+        limit: Int
+    ): List<TaskComment> {
+        return taskRemoteDataSource.getTaskComments(projectId, taskId, limit)
+    }
+
+    override fun observeTaskComments(
+        projectId: String,
+        taskId: String,
+        limit: Int
+    ): Flow<List<TaskComment>> {
+        return taskRemoteDataSource.observeTaskComments(projectId, taskId, limit)
+    }
+
+    override suspend fun editTaskComment(
+        projectId: String,
+        taskId: String,
+        commentId: String,
+        newMessage: String
+    ): Result<Unit> {
+        return taskRemoteDataSource.editTaskComment(projectId, taskId, commentId, newMessage)
+    }
+
+    override suspend fun deleteTaskComment(
+        projectId: String,
+        taskId: String,
+        commentId: String
+    ): Result<Unit> {
+        return taskRemoteDataSource.deleteTaskComment(projectId, taskId, commentId)
     }
 }

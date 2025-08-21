@@ -6,5 +6,6 @@ enum class UserFriendsErrorType {
     FetchFriendsError,
     AcceptRequestError,
     RejectRequestError,
-    FetchPendingRequestsError
+    FetchPendingRequestsError,
+    FETCH_USER_ERROR
 }
