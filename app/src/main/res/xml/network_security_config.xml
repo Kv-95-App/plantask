@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Primary Firebase Services -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Realtime Database -->
+        <domain includeSubdomains="true">task-manager-1c3ba-default-rtdb.europe-west1.firebasedatabase.app</domain>
+
+        <!-- Authentication -->
+        <domain includeSubdomains="true">identitytoolkit.googleapis.com</domain>
+        <domain includeSubdomains="true">securetoken.googleapis.com</domain>
+
+        <!-- Storage -->
+        <domain includeSubdomains="true">firebasestorage.googleapis.com</domain>
+    </domain-config>
+
+    <!-- Google Core Services -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <domain includeSubdomains="true">gstatic.com</domain>
+    </domain-config>
+
+    <!-- Fallback Rule (Mandatory) -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
