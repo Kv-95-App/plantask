@@ -1,12 +1,7 @@
-# =========================
-# Android / Kotlin / Gradle
-# =========================
-
-# Gradle
+# Android / Gradle / Kotlin
 .gradle/
 build/
 captures/
-.externalNativeBuild/
 .cxx/
 out/
 
@@ -15,7 +10,7 @@ out/
 .idea/
 .DS_Store
 
-# Local configuration
+# Local files
 local.properties
 gradle.properties
 scripts/set-signing-env.ps1
@@ -30,16 +25,3 @@ app/release/
 
 # Firebase
 firebase-debug.log
-
-# OS-specific files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Generated files
-.navigation/
-app/generated/
-
-# Kotlin / Java build cache
-build/
-out/
