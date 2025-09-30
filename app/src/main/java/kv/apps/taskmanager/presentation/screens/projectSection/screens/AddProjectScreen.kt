@@ -58,6 +58,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.remem
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.components.OfflineStatusIndicator
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
@@ -81,14 +82,13 @@ fun AddProjectScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showFriendSelection by remember { mutableStateOf(false) }
 
+    val projectId = remember { UUID.randomUUID().toString() }
+
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
     var isKeyboardVisible by remember { mutableStateOf(false) }
 
     val isLoggingOut = authViewModel.uiState.collectAsState().value.isLoggingOut
-    val projectId by projectViewModel.projects.collectAsState().value.lastOrNull()?.id?.let { id ->
-        remember { mutableStateOf(id) }
-    } ?: remember { mutableStateOf("") }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
@@ -164,6 +164,7 @@ fun AddProjectScreen(
                         .padding(paddingValues)
                         .padding(16.dp)
                 ) {
+                    OfflineStatusIndicator()
                     Text(
                         "Project Title",
                         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
@@ -331,7 +332,7 @@ fun AddProjectScreen(
                         onClick = {
                             isKeyboardVisible = false
                             focusManager.clearFocus()
-                            showFriendSelection = true
+                            showFriendSelection = true // Just show the modal
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
@@ -369,7 +370,6 @@ fun AddProjectScreen(
                                     showError = true
                                 } else {
                                     val currentUserId = authViewModel.uiState.value.user?.uid ?: ""
-                                    val projectId = UUID.randomUUID().toString()
 
                                     val newProject = Project(
                                         id = projectId,
@@ -378,7 +378,7 @@ fun AddProjectScreen(
                                         dueDate = dueDate!!,
                                         isCompleted = false,
                                         createdBy = currentUserId,
-                                        teamMembers = listOf(currentUserId)
+                                        teamMembers = listOf(currentUserId) + selectedFriends
                                     )
                                     projectViewModel.createProject(newProject)
 
@@ -409,38 +409,25 @@ fun AddProjectScreen(
             }
         }
     }
-        if (showFriendSelection) {
-            ProjectSelectionModal(
-                showFriendSelection = true,
-                onDismiss = {
-                    showFriendSelection = false
-                    selectedFriends = emptySet()
-                },
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                selectedFriends = selectedFriends,
-                onFriendSelected = { friendId ->
-                    selectedFriends = if (selectedFriends.contains(friendId)) {
-                        selectedFriends - friendId
-                    } else {
-                        selectedFriends + friendId
-                    }
-                },
-                filteredFriends = filteredFriends,
-                showSendButton = true,
-                onSendInvitations = {
-                    val currentUserId = authViewModel.uiState.value.user?.uid ?: ""
-                    selectedFriends.forEach { friendId ->
-                        val invitation = ProjectInvitation(
-                            invitationId = "inv_${friendId}_${System.currentTimeMillis()}",
-                            fromUserId = currentUserId,
-                            toUserId = friendId,
-                            projectId = projectId,
-                            status = "Pending"
-                        )
-                        projectViewModel.sendProjectInvitation(invitation)
-                    }
-                })
-        }
-
+    if (showFriendSelection) {
+        ProjectSelectionModal(
+            showFriendSelection = true,
+            onDismiss = {
+                showFriendSelection = false
+            },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            selectedFriends = selectedFriends,
+            onFriendSelected = { friendId ->
+                selectedFriends = if (selectedFriends.contains(friendId)) {
+                    selectedFriends - friendId
+                } else {
+                    selectedFriends + friendId
+                }
+            },
+            filteredFriends = filteredFriends,
+            showSendButton = false,
+            onSendInvitations = {}
+        )
     }
+}

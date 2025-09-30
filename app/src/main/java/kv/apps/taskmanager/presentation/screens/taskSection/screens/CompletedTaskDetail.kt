@@ -72,7 +72,6 @@ fun CompletedTaskDetailScreen(
     val authState by authViewModel.uiState.collectAsState()
     val isLoggingOut = authState.isLoggingOut
 
-    // Comment-related state
     val commentsState by taskViewModel.commentsState.collectAsState()
     val currentTaskComments = commentsState[taskId] ?: emptyList()
     val currentUserId = authState.user?.uid
@@ -215,7 +214,7 @@ fun CompletedTaskDetailScreen(
                                             MemberAvatarsRow(
                                                 userIds = task.assignedTo,
                                                 initialsMap = uiState.taskAssignedUsersInitials,
-                                                isLoading = loading
+                                                isLoading = false
                                             )
                                         }
                                     }

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.room.Room
+import androidx.work.WorkManager
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
@@ -16,6 +18,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kv.apps.taskmanager.data.connectivity.ConnectivityObserver
+import kv.apps.taskmanager.data.connectivity.NetworkConnectivityObserver
+import kv.apps.taskmanager.data.local.database.TaskManagerDatabase
 import kv.apps.taskmanager.data.remote.AuthRemoteDataSource
 import kv.apps.taskmanager.data.remote.FirestoreListenerManager
 import kv.apps.taskmanager.data.remote.GoogleSignInHelper
@@ -75,7 +80,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideFirebaseFunctions(): FirebaseFunctions = FirebaseFunctions.getInstance()
+    fun provideFirebaseFunctions(): FirebaseFunctions = FirebaseFunctions.getInstance("europe-west1")
 
     @Provides
     @Singleton

@@ -15,6 +15,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -67,7 +68,6 @@ class AuthRepositoryImpl @Inject constructor(
                     fcmToken = fcmToken
                 )
 
-                // Include createdAt timestamp and all necessary fields
                 firestore.collection("users").document(user.uid)
                     .set(mapOf(
                         "uid" to user.uid,
@@ -76,7 +76,7 @@ class AuthRepositoryImpl @Inject constructor(
                         "lastName" to user.lastName,
                         "birthday" to user.birthday,
                         "fcmToken" to user.fcmToken,
-                        "createdAt" to FieldValue.serverTimestamp() // ADD THIS
+                        "createdAt" to FieldValue.serverTimestamp()
                     ), SetOptions.merge())
                     .await()
 
@@ -196,6 +196,10 @@ class AuthRepositoryImpl @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun observeAuthState(): Flow<User?> = callbackFlow {
         val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+
+        val initialUser = auth.currentUser
+        trySend(initialUser?.uid)
+
         val listener = com.google.firebase.auth.FirebaseAuth.AuthStateListener { firebaseAuth ->
             trySend(firebaseAuth.currentUser?.uid)
         }
@@ -209,6 +213,10 @@ class AuthRepositoryImpl @Inject constructor(
             firestore.collection("users").document(userId).snapshots()
                 .map { document ->
                     document.toObject(User::class.java)?.copy(uid = userId)
+                }
+                .catch { e ->
+                    Log.e("AuthRepository", "Error fetching user data", e)
+                    emit(null)
                 }
         } else {
             flowOf(null)

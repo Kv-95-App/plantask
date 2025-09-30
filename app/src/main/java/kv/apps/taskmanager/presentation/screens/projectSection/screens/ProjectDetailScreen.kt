@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -75,6 +74,7 @@ import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
+import kv.apps.taskmanager.presentation.components.OfflineStatusIndicator
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
@@ -91,9 +91,10 @@ fun ProjectDetailScreen(
     authViewModel: AuthViewModel,
     userFriendsViewModel: UserFriendsViewModel
 ) {
-    val project by projectViewModel.selectedProject.collectAsState()
-    val loading by projectViewModel.loading.collectAsState()
-    val error by projectViewModel.error.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val project = projectUiState.selectedProject
+    val loading = projectUiState.isLoading
+    val error = projectUiState.errorMessage
     val uiState = taskViewModel.uiState.collectAsState()
     val tasks = uiState.value.tasks.filter { it.projectId == projectId }
     val authUiState by authViewModel.uiState.collectAsState()
@@ -118,7 +119,7 @@ fun ProjectDetailScreen(
                 (friend.displayName.contains(searchQuery, ignoreCase = true) ||
                         friend.email.contains(searchQuery, ignoreCase = true) )
             }.filter { friend ->
-                !project!!.teamMembers.contains(friend.friendId)
+                !project.teamMembers.contains(friend.friendId)
             }
         }
     }
@@ -155,21 +156,14 @@ fun ProjectDetailScreen(
 
     LaunchedEffect(project) {
         if (project != null && !isEditing) {
-            editedTitle = project!!.title
-            editedDescription = project!!.description
-            editedDueDate = project!!.dueDate
+            editedTitle = project.title
+            editedDescription = project.description
+            editedDueDate = project.dueDate
         }
     }
 
     if (loading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundColor),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = mainAppColor)
-        }
+        kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.LoadingOverlay()
         return
     }
 
@@ -279,6 +273,9 @@ fun ProjectDetailScreen(
                         contentPadding = PaddingValues(16.dp)
                     ) {
                         item {
+                            OfflineStatusIndicator()
+                        }
+                        item {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -318,7 +315,7 @@ fun ProjectDetailScreen(
                                                 onClick = {
                                                     projectViewModel.updateProject(
                                                         projectId = projectId,
-                                                        project!!.copy(
+                                                        project.copy(
                                                             title = editedTitle,
                                                             description = editedDescription,
                                                             dueDate = editedDueDate
@@ -337,9 +334,9 @@ fun ProjectDetailScreen(
                                             IconButton(
                                                 onClick = {
                                                     isEditing = false
-                                                    editedTitle = project!!.title
-                                                    editedDescription = project!!.description
-                                                    editedDueDate = project!!.dueDate
+                                                    editedTitle = project.title
+                                                    editedDescription = project.description
+                                                    editedDueDate = project.dueDate
                                                 }
                                             ) {
                                                 Icon(
@@ -376,14 +373,14 @@ fun ProjectDetailScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(
-                                            if (project!!.isCompleted) Color.Green.copy(alpha = 0.2f)
+                                            if (project.isCompleted) Color.Green.copy(alpha = 0.2f)
                                             else mainAppColor.copy(alpha = 0.2f)
                                         )
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
                                     Text(
-                                        text = if (project!!.isCompleted) "COMPLETED" else "IN PROGRESS",
-                                        color = if (project!!.isCompleted) Color.Green else mainAppColor,
+                                        text = if (project.isCompleted) "COMPLETED" else "IN PROGRESS",
+                                        color = if (project.isCompleted) Color.Green else mainAppColor,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -394,11 +391,11 @@ fun ProjectDetailScreen(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Text(
-                                            text = if (project!!.isCompleted) "Reopen" else "Complete",
+                                            text = if (project.isCompleted) "Reopen" else "Complete",
                                             color = Color.White
                                         )
                                         Switch(
-                                            checked = project!!.isCompleted,
+                                            checked = project.isCompleted,
                                             onCheckedChange = { newStatus ->
                                                 pendingCompletionStatus = newStatus
                                                 showCompletionConfirmation = true
@@ -507,7 +504,11 @@ fun ProjectDetailScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clickable {
-                                            navController.navigate(Screen.ProjectMembers.createRoute(projectId))
+                                            navController.navigate(
+                                                Screen.ProjectMembers.createRoute(
+                                                    projectId
+                                                )
+                                            )
                                         }
                                 ) {
                                     Text(
@@ -519,7 +520,10 @@ fun ProjectDetailScreen(
                                     Box(
                                         modifier = Modifier
                                             .size(40.dp)
-                                            .background(mainAppColor, shape = RoundedCornerShape(8.dp))
+                                            .background(
+                                                mainAppColor,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
                                             .padding(8.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -531,7 +535,7 @@ fun ProjectDetailScreen(
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    val totalMembers = project!!.teamMembers.size
+                                    val totalMembers = project.teamMembers.size
                                     val memberText = if (totalMembers == 1) "1 Member" else "$totalMembers Members"
                                     Text(
                                         text = memberText,
@@ -620,7 +624,7 @@ fun ProjectDetailScreen(
                                         .fillMaxWidth()
                                         .padding(vertical = 8.dp),
                                     authViewModel = authViewModel,
-                                    projectCreatedBy = project?.createdBy ?: "",
+                                    projectCreatedBy = project.createdBy,
                                     onDelete = {
                                         taskViewModel.deleteTaskFromProject(
                                             taskId = task.id,

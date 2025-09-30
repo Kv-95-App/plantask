@@ -249,7 +249,12 @@ fun LoginScreen(
 
                 Button(
                     onClick = { authViewModel.login(email, password, keepLoggedIn) },
-                    colors = ButtonDefaults.buttonColors(containerColor = mainAppColor),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = mainAppColor,
+                        disabledContainerColor = Color.Gray,
+                        disabledContentColor = Color.Black,
+                        contentColor = Color.Black
+                    ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -264,7 +269,11 @@ fun LoginScreen(
                     } else {
                         Text(
                             "Login",
-                            color = Color.Black,
+                            color = if (email.isNotBlank() && password.isNotBlank()) {
+                                Color.Black
+                            } else {
+                                Color.Black
+                            },
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -363,11 +372,18 @@ fun LoginScreen(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 16.dp)
         ) {
-            SnackbarHost(hostState = snackbarHostState)
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                androidx.compose.material3.Snackbar(
+                    snackbarData = data,
+                    containerColor = Color(0xFF323232),
+                    contentColor = Color.White,
+                    actionColor = mainAppColor,
+                    dismissActionContentColor = Color.White
+                )
+            }
         }
     }
 }
-
 @Composable
 private fun textFieldColorsLogin() = TextFieldDefaults.colors(
     focusedContainerColor = Color(0xFF333A47),

@@ -57,7 +57,7 @@ fun NavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = if (authUiState.userId != null && !authUiState.isLoggingOut) Screen.ProjectList.route else Screen.SplashScreen.route
+        startDestination = Screen.SplashScreen.route
     ) {
         // Authentication Screens
         composable(route = Screen.Login.route) {
@@ -314,7 +314,8 @@ fun NavGraph(
             TargetProfileScreen(
                 navController = navController,
                 userId = userId,
-                userFriendsViewModel = userFriendsViewModel
+                userFriendsViewModel = userFriendsViewModel,
+                authViewModel = authViewModel
             )
         }
     }

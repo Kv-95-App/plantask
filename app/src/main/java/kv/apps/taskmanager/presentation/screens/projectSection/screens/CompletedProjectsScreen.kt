@@ -50,6 +50,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.menuBars.TopBar
 import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.AppDrawer
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
+import kv.apps.taskmanager.presentation.components.OfflineStatusIndicator
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.theme.onGoingCardColor
@@ -60,10 +61,11 @@ fun CompletedProjectsScreen(
     projectViewModel: ProjectViewModel,
     authViewModel: AuthViewModel
 ) {
-    val projects by projectViewModel.projects.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val projects = projectUiState.projects
     val authUiState by authViewModel.uiState.collectAsState()
     val userId = authUiState.userId
-    val isLoading by projectViewModel.loading.collectAsState()
+    val isLoading = projectUiState.isLoading
     val isLoggingOut = authUiState.isLoggingOut
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -112,6 +114,7 @@ fun CompletedProjectsScreen(
                     .padding(paddingValues)
                     .background(backgroundColor)
             ) {
+                OfflineStatusIndicator()
                 when {
                     isLoading -> {
                             Box(
@@ -166,7 +169,11 @@ fun CompletedProjectsScreen(
                                             .fillMaxWidth()
                                             .padding(vertical = 8.dp)
                                             .clickable {
-                                                navController.navigate(Screen.CompletedProjectDetail.createRoute(project.id))
+                                                navController.navigate(
+                                                    Screen.CompletedProjectDetail.createRoute(
+                                                        project.id
+                                                    )
+                                                )
                                             },
                                         colors = CardDefaults.cardColors(
                                             containerColor = onGoingCardColor,

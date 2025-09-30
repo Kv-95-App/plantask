@@ -7,420 +7,547 @@ import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kv.apps.taskmanager.domain.model.Project
 import kv.apps.taskmanager.domain.model.ProjectInvitation
 import kv.apps.taskmanager.domain.model.TeamMember
 import kv.apps.taskmanager.domain.usecase.projectsUseCases.ProjectUseCases
 import javax.inject.Inject
-import kotlin.let
 
 @HiltViewModel
 class ProjectViewModel @Inject constructor(
     private val projectUseCases: ProjectUseCases,
     private val auth: FirebaseAuth
-
 ) : ViewModel() {
+    private val _uiState = MutableStateFlow(ProjectUiState())
+    val uiState: StateFlow<ProjectUiState> = _uiState.asStateFlow()
 
-    private val _projects = MutableStateFlow<List<Project>>(emptyList())
-    val projects: StateFlow<List<Project>> = _projects.asStateFlow()
-
-    private val _selectedProject = MutableStateFlow<Project?>(null)
-    val selectedProject: StateFlow<Project?> = _selectedProject.asStateFlow()
-
-    private val _loading = MutableStateFlow(false)
-    val loading: StateFlow<Boolean> = _loading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _teamMembers = MutableStateFlow<List<String>>(emptyList())
-    val teamMembers: StateFlow<List<String>> = _teamMembers.asStateFlow()
-
-    private val _teamMembersWithDetails = MutableStateFlow<List<TeamMember>>(emptyList())
-    val teamMembersWithDetails: StateFlow<List<TeamMember>> = _teamMembersWithDetails.asStateFlow()
-
-    private val _teamMembersLoading = MutableStateFlow(false)
-    val teamMembersLoading: StateFlow<Boolean> = _teamMembersLoading.asStateFlow()
-
-    private val _teamMembersError = MutableStateFlow<String?>(null)
-    val teamMembersError: StateFlow<String?> = _teamMembersError.asStateFlow()
-
-    private val _notificationsLoading = MutableStateFlow(false)
-    val notificationsLoading: StateFlow<Boolean> = _notificationsLoading.asStateFlow()
-
-    private val _invitations = MutableStateFlow<List<ProjectInvitation>>(emptyList())
-    val invitations: StateFlow<List<ProjectInvitation>> = _invitations.asStateFlow()
-
-    private val _invitationActionState = MutableStateFlow<Result<Unit>?>(null)
-    val invitationActionState: StateFlow<Result<Unit>?> = _invitationActionState.asStateFlow()
+    private val _events = MutableSharedFlow<ProjectEvent>()
+    val events: SharedFlow<ProjectEvent> = _events.asSharedFlow()
 
     private val invitationsCache = mutableStateMapOf<String, List<ProjectInvitation>>()
+    val creatorNamesCache = mutableStateMapOf<String, Pair<String, String>>()
+    val projectTitlesCache = mutableStateMapOf<String, String>()
+    private val teamMembersCache = mutableStateMapOf<String, List<TeamMember>>()
 
-    private val _creatorNamesCache = mutableStateMapOf<String, Pair<String, String>>()
-    val creatorNamesCache: Map<String, Pair<String, String>> get() = _creatorNamesCache
+    private suspend fun emitError(type: ProjectErrorType, message: String) {
+        _events.emit(ProjectEvent.Error(type, message))
+    }
 
-    private val _projectTitlesCache = mutableStateMapOf<String, String>()
-    val projectTitlesCache: Map<String, String> get() = _projectTitlesCache
-
-    private val _teamMembersCache = mutableStateMapOf<String, List<TeamMember>>()
-
-    private val _ownerDetails = MutableStateFlow<Pair<String, String>?>(null)
-
+    private suspend fun emitEvent(event: ProjectEvent) {
+        _events.emit(event)
+    }
 
     fun fetchTeamMembersForProject(projectId: String, forceRefresh: Boolean = false) {
-        if (!forceRefresh && _teamMembersCache[projectId] != null) {
-            _teamMembersWithDetails.value = _teamMembersCache[projectId]!!
+        if (!forceRefresh && teamMembersCache[projectId] != null) {
+            val cached = teamMembersCache[projectId]!!
+            _uiState.update {
+                it.copy(
+                    teamMembersWithDetails = cached,
+                    teamMemberIds = cached.map { m -> m.userId },
+                    isTeamMembersLoading = false
+                )
+            }
             return
         }
 
-        _teamMembersLoading.value = true
-        _teamMembersError.value = null
+        _uiState.update { it.copy(isTeamMembersLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
             try {
                 val result = projectUseCases.getTeamMembersForProject(projectId)
-                _teamMembersWithDetails.value = result
-                _teamMembersCache[projectId] = result
-                _teamMembers.value = result.map { it.userId }
+                teamMembersCache[projectId] = result
+                _uiState.update { state ->
+                    state.copy(
+                        teamMembersWithDetails = result,
+                        teamMemberIds = result.map { it.userId },
+                        isTeamMembersLoading = false
+                    )
+                }
+                emitEvent(ProjectEvent.TeamMembersLoaded)
             } catch (e: Exception) {
-                _teamMembersError.value = "Failed to load team members: ${e.message}"
-            } finally {
-                _teamMembersLoading.value = false
+                val msg = "Failed to load team members: ${e.message}"
+                _uiState.update { it.copy(isTeamMembersLoading = false, errorMessage = msg) }
+                emitError(ProjectErrorType.MEMBERS_ERROR, msg)
             }
         }
     }
 
     fun fetchAllProjects() {
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
         viewModelScope.launch {
             try {
                 projectUseCases.getAllProjectsForUser()
                     .onSuccess { projects ->
-                        _projects.value = projects
-                        _error.value = null
+                        _uiState.update { it.copy(
+                            projects = projects,
+                            isLoading = false,
+                            errorMessage = null
+                        ) }
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to fetch projects: ${e.message}"
+                        _uiState.update { it.copy(
+                            isLoading = false,
+                            errorMessage = "Failed to fetch projects: ${e.message}"
+                        ) }
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
-            } finally {
-                _loading.value = false
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    errorMessage = "Unexpected error: ${e.message}"
+                ) }
             }
         }
     }
 
     fun getProjectById(projectId: String) {
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true, errorMessage = null, selectedProject = null) }
         viewModelScope.launch {
             try {
                 projectUseCases.getProjectById(projectId)
                     .onSuccess { project ->
-                        _selectedProject.value = project
+                        _uiState.update { state ->
+                            state.copy(
+                                selectedProject = project,
+                                isLoading = false,
+                                errorMessage = null
+                            )
+                        }
                         loadOwnerDetails(project.createdBy)
                         fetchTeamMembersForProject(projectId)
-                        _error.value = null
+                        emitEvent(ProjectEvent.ProjectFetched)
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to fetch project: ${e.message}"
+                        val msg = "Failed to fetch project: ${e.message}"
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = msg,
+                                selectedProject = null
+                            )
+                        }
+                        emitError(ProjectErrorType.FETCH_ERROR, msg)
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
-            } finally {
-                _loading.value = false
+                val msg = "Unexpected error: ${e.message}"
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = msg,
+                        selectedProject = null
+                    )
+                }
+                emitError(ProjectErrorType.FETCH_ERROR, msg)
             }
         }
     }
 
     fun createProject(project: Project) {
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val tempProjectId = project.id.ifEmpty { "temp-${System.currentTimeMillis()}" }
-                _projects.value = _projects.value + project.copy(id = tempProjectId)
+                val newList = uiState.value.projects + project.copy(id = tempProjectId)
+                _uiState.update { it.copy(projects = newList) }
 
                 projectUseCases.createProject(project)
                     .onSuccess { actualId ->
-                        _projects.value = _projects.value.map {
-                            if (it.id == tempProjectId) it.copy(id = actualId) else it
+                        val finalProject = project.copy(id = actualId)
+                        val updated = uiState.value.projects.map {
+                            if (it.id == tempProjectId) finalProject else it
                         }
-                        _error.value = null
+                        _uiState.update { it.copy(projects = updated, isLoading = false) }
+                        emitEvent(ProjectEvent.ProjectCreated)
+
+                        val membersToInvite = finalProject.teamMembers.filter {
+                            it != finalProject.createdBy
+                        }
+                        if (membersToInvite.isNotEmpty()) {
+                            membersToInvite.forEach { memberId ->
+                                val invitation = ProjectInvitation(
+                                    invitationId = "inv_${memberId}_${System.currentTimeMillis()}",
+                                    fromUserId = finalProject.createdBy,
+                                    toUserId = memberId,
+                                    projectId = actualId,
+                                    status = "Pending"
+                                )
+                                sendProjectInvitation(invitation)
+                            }
+                        }
+
                         fetchAllProjects()
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to create project: ${e.message}"
-                        _projects.value = _projects.value.filter { it.id != tempProjectId }
+                        val msg = "Failed to create project: ${e.message}"
+                        val reverted = uiState.value.projects.filter { it.id != tempProjectId }
+                        _uiState.update {
+                            it.copy(
+                                projects = reverted,
+                                isLoading = false,
+                                errorMessage = msg
+                            )
+                        }
+                        emitError(ProjectErrorType.CREATE_ERROR, msg)
                         fetchAllProjects()
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
+                val msg = "Unexpected error: ${e.message}"
+                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                emitError(ProjectErrorType.CREATE_ERROR, msg)
                 fetchAllProjects()
-            } finally {
-                _loading.value = false
             }
         }
     }
 
     fun updateProject(projectId: String, updatedProject: Project) {
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                _projects.value = _projects.value.map { project ->
+                val updatedProjects = uiState.value.projects.map { project ->
                     if (project.id == projectId) updatedProject else project
                 }
+                _uiState.update { it.copy(projects = updatedProjects) }
+
                 projectUseCases.updateProject(projectId, updatedProject)
                     .onSuccess {
-                        _error.value = null
+                        _uiState.update { it.copy(isLoading = false) }
+                        emitEvent(ProjectEvent.ProjectUpdated)
                         fetchAllProjects()
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to update project: ${e.message}"
+                        val msg = "Failed to update project: ${e.message}"
+                        _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                        emitError(ProjectErrorType.UPDATE_ERROR, msg)
                         fetchAllProjects()
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
+                val msg = "Unexpected error: ${e.message}"
+                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                emitError(ProjectErrorType.UPDATE_ERROR, msg)
                 fetchAllProjects()
-            } finally {
-                _loading.value = false
             }
         }
     }
 
     fun deleteProject(projectId: String) {
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                _projects.value = _projects.value.filter { it.id != projectId }
+                val filteredProjects = uiState.value.projects.filter { it.id != projectId }
+                _uiState.update { it.copy(projects = filteredProjects) }
+
                 projectUseCases.deleteProject(projectId)
                     .onSuccess {
-                        _error.value = null
+                        _uiState.update { it.copy(isLoading = false) }
+                        emitEvent(ProjectEvent.ProjectDeleted)
                         fetchAllProjects()
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to delete project: ${e.message}"
+                        val msg = "Failed to delete project: ${e.message}"
+                        _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                        emitError(ProjectErrorType.DELETE_ERROR, msg)
                         fetchAllProjects()
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
+                val msg = "Unexpected error: ${e.message}"
+                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                emitError(ProjectErrorType.DELETE_ERROR, msg)
                 fetchAllProjects()
-            } finally {
-                _loading.value = false
             }
         }
     }
+
     fun isCurrentUserCreator(projectId: String): Boolean {
-        val project = _projects.value.find { it.id == projectId }
+        val project = uiState.value.projects.find { it.id == projectId }
         return project?.createdBy == auth.currentUser?.uid
     }
 
-
-    fun removeTeamMembersFromProject(projectId: String, teamMemberId: String, onSuccess: () -> Int) {
+    fun removeTeamMembersFromProject(projectId: String, teamMemberId: String, onSuccess: () -> Unit = {}) {
         if (!isCurrentUserCreator(projectId)) {
-            _error.value = "Only project creator can remove members"
+            val msg = "Only project creator can remove members"
+            _uiState.update { it.copy(errorMessage = msg) }
             return
         }
 
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
-                _projects.value = _projects.value.map { project ->
-                    if (project.id == projectId) {
-                        project.copy(teamMembers = project.teamMembers - teamMemberId)
-                    } else project
-                }
-
                 projectUseCases.removeTeamMembersFromProject(projectId, teamMemberId)
                     .onSuccess {
+                        teamMembersCache.remove(projectId)
                         fetchTeamMembersForProject(projectId, true)
-                        _error.value = null
+                        _uiState.update { it.copy(isLoading = false) }
+                        onSuccess()
                     }
                     .onFailure { e ->
-                        _error.value = "Failed to remove team member: ${e.message}"
+                        val msg = "Failed to remove team member: ${e.message}"
+                        _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
                         fetchTeamMembersForProject(projectId, true)
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
+                val msg = "Unexpected error: ${e.message}"
+                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
                 fetchTeamMembersForProject(projectId, true)
-            } finally {
-                _loading.value = false
             }
         }
     }
 
     fun loadOwnerDetails(userId: String) {
-        if (_creatorNamesCache.containsKey(userId)) {
-            _ownerDetails.value = _creatorNamesCache[userId]
+        if (creatorNamesCache.containsKey(userId)) {
+            val names = creatorNamesCache[userId]
+            _uiState.update { it.copy(ownerDetails = names) }
             return
         }
 
         viewModelScope.launch {
-            _loading.value = true
+            _uiState.update { it.copy(isLoading = true) }
             projectUseCases.getProjectCreatorDetails(userId)
                 .onSuccess { names ->
-                    _creatorNamesCache[userId] = names
-                    _ownerDetails.value = names
+                    creatorNamesCache[userId] = names
+                    _uiState.update { it.copy(ownerDetails = names, isLoading = false) }
+                    emitEvent(ProjectEvent.OwnerDetailsLoaded)
                 }
                 .onFailure { e ->
-                    _error.value = "Failed to load owner details: ${e.message}"
+                    val msg = "Failed to load owner details: ${e.message}"
+                    _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                    emitError(ProjectErrorType.OWNER_ERROR, msg)
                 }
-            _loading.value = false
         }
     }
 
-
     fun fetchCreatorName(userId: String) {
-        if (_creatorNamesCache.containsKey(userId)) return
+        if (creatorNamesCache.containsKey(userId)) return
         viewModelScope.launch {
-            _loading.value = true
             projectUseCases.getProjectCreatorDetails(userId)
                 .onSuccess { names ->
-                    _creatorNamesCache[userId] = names
+                    creatorNamesCache[userId] = names
                 }
                 .onFailure { e ->
                 }
-            _loading.value = false
         }
     }
 
     fun fetchProjectTitle(projectId: String) {
-        if (_projectTitlesCache.containsKey(projectId)) return
+        if (projectTitlesCache.containsKey(projectId)) return
         viewModelScope.launch {
-            _loading.value = true
             projectUseCases.getProjectById(projectId)
                 .onSuccess { project ->
-                    _projectTitlesCache[projectId] = project.title
+                    projectTitlesCache[projectId] = project.title
                 }
                 .onFailure { e ->
+
                 }
-            _loading.value = false
         }
     }
 
     fun sendProjectInvitation(invitation: ProjectInvitation) {
         if (invitation.fromUserId == invitation.toUserId) {
-            _error.value = "Cannot invite yourself"
+            _uiState.update { it.copy(errorMessage = "Cannot invite yourself") }
             return
         }
 
-        _loading.value = true
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
                 val tempInvitation = invitation.copy(
                     invitationId = invitation.invitationId.ifEmpty { "temp-${System.currentTimeMillis()}" }
                 )
-                _invitations.value = _invitations.value + tempInvitation
+                val updatedInvitations = uiState.value.invitations + tempInvitation
+                _uiState.update { it.copy(invitations = updatedInvitations) }
 
                 projectUseCases.sendProjectInvitation(invitation)
                     .onSuccess {
-                        _invitationActionState.value = Result.success(Unit)
-                        _error.value = null
+                        _uiState.update { it.copy(isLoading = false) }
+                        emitEvent(ProjectEvent.InvitationSent)
+
+                        invitationsCache.remove(invitation.fromUserId)
+                        invitationsCache.remove(invitation.toUserId)
+
                         if (invitation.toUserId == auth.currentUser?.uid) {
                             getPendingProjectInvitations(invitation.toUserId, true)
                         }
                     }
                     .onFailure { e ->
-                        _invitations.value = _invitations.value - tempInvitation
-                        _invitationActionState.value = Result.failure(e)
-                        _error.value = "Failed to send invitation: ${e.message}"
+                        val updated = uiState.value.invitations.filter {
+                            it.invitationId != tempInvitation.invitationId
+                        }
+                        _uiState.update {
+                            it.copy(
+                                invitations = updated,
+                                isLoading = false
+                            )
+                        }
+
+                        val msg = if (e.message?.contains("already has a pending invitation") == true) {
+                            "Invitation already sent to this user"
+                        } else {
+                            "Failed to send invitation: ${e.message}"
+                        }
+                        _uiState.update { it.copy(errorMessage = msg) }
+                        emitError(ProjectErrorType.INVITATION_ERROR, msg)
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
-            } finally {
-                _loading.value = false
+                val msg = "Unexpected error: ${e.message}"
+                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                emitError(ProjectErrorType.INVITATION_ERROR, msg)
             }
         }
     }
+
     fun getPendingProjectInvitations(userId: String, forceRefresh: Boolean = false) {
         if (!forceRefresh && invitationsCache.containsKey(userId)) {
-            _invitations.value = invitationsCache[userId] ?: emptyList()
+            val cached = invitationsCache[userId] ?: emptyList()
+            _uiState.update {
+                it.copy(
+                    invitations = cached,
+                    isNotificationsLoading = false
+                )
+            }
+            viewModelScope.launch { emitEvent(ProjectEvent.InvitationsLoaded) }
             return
         }
 
         viewModelScope.launch {
-            _notificationsLoading.value = true
+            _uiState.update { it.copy(isNotificationsLoading = true) }
             try {
                 projectUseCases.getPendingProjectInvitations(userId)
                     .onSuccess { invitations ->
                         val filtered = invitations.filter { it.toUserId == userId }
-                        _invitations.value = filtered
                         invitationsCache[userId] = filtered
-                        _error.value = null
+                        _uiState.update {
+                            it.copy(
+                                invitations = filtered,
+                                isNotificationsLoading = false
+                            )
+                        }
+                        emitEvent(ProjectEvent.InvitationsLoaded)
                     }
                     .onFailure { e ->
-                        _error.value = e.message
-                        _invitations.value = emptyList()
+                        val msg = e.message ?: "Failed to load invitations"
                         invitationsCache.remove(userId)
+                        _uiState.update {
+                            it.copy(
+                                invitations = emptyList(),
+                                isNotificationsLoading = false,
+                                errorMessage = msg
+                            )
+                        }
+                        emitError(ProjectErrorType.NOTIFICATION_ERROR, msg)
                     }
             } catch (e: Exception) {
-                _error.value = "Unexpected error: ${e.message}"
-                _invitations.value = emptyList()
+                val msg = "Unexpected error: ${e.message}"
                 invitationsCache.remove(userId)
-            } finally {
-                _notificationsLoading.value = false
+                _uiState.update {
+                    it.copy(
+                        invitations = emptyList(),
+                        isNotificationsLoading = false,
+                        errorMessage = msg
+                    )
+                }
+                emitError(ProjectErrorType.NOTIFICATION_ERROR, msg)
             }
         }
     }
 
     fun acceptInvitation(invitationId: String, projectId: String, userId: String) {
         viewModelScope.launch {
-            _notificationsLoading.value = true
+            _uiState.update { it.copy(isNotificationsLoading = true) }
             try {
                 projectUseCases.acceptInvitation(invitationId, projectId, userId)
                     .onSuccess {
                         removeInvitation(invitationId)
-                        _invitationActionState.value = Result.success(Unit)
+                        _uiState.update {
+                            it.copy(
+                                invitationActionState = Result.success(Unit),
+                                isNotificationsLoading = false
+                            )
+                        }
+                        emitEvent(ProjectEvent.InvitationAccepted)
                     }
                     .onFailure { e ->
-                        _invitationActionState.value = Result.failure(e)
-                        _error.value = "Failed to accept invitation: ${e.message}"
+                        _uiState.update {
+                            it.copy(
+                                invitationActionState = Result.failure(e),
+                                isNotificationsLoading = false,
+                                errorMessage = "Failed to accept invitation: ${e.message}"
+                            )
+                        }
                     }
-            } finally {
-                _notificationsLoading.value = false
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        invitationActionState = Result.failure(e),
+                        isNotificationsLoading = false,
+                        errorMessage = "Unexpected error: ${e.message}"
+                    )
+                }
             }
         }
     }
 
     fun rejectInvitation(invitationId: String, projectId: String, userId: String) {
         viewModelScope.launch {
-            _notificationsLoading.value = true
+            _uiState.update { it.copy(isNotificationsLoading = true) }
             try {
-                projectUseCases.rejectInvitation(
-                    invitationId, projectId,
-                    userId
-                )
+                projectUseCases.rejectInvitation(invitationId, projectId, userId)
                     .onSuccess {
                         removeInvitation(invitationId)
-                        _invitationActionState.value = Result.success(Unit)
+                        _uiState.update {
+                            it.copy(
+                                invitationActionState = Result.success(Unit),
+                                isNotificationsLoading = false
+                            )
+                        }
+                        emitEvent(ProjectEvent.InvitationRejected)
                     }
                     .onFailure { e ->
-                        _invitationActionState.value = Result.failure(e)
-                        _error.value = "Failed to reject invitation: ${e.message}"
+                        _uiState.update {
+                            it.copy(
+                                invitationActionState = Result.failure(e),
+                                isNotificationsLoading = false,
+                                errorMessage = "Failed to reject invitation: ${e.message}"
+                            )
+                        }
                     }
-            } finally {
-                _notificationsLoading.value = false
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        invitationActionState = Result.failure(e),
+                        isNotificationsLoading = false,
+                        errorMessage = "Unexpected error: ${e.message}"
+                    )
+                }
             }
-        }
-    }
-    fun removeInvitation(invitationId: String) {
-        _invitations.value = _invitations.value.filter { it.invitationId != invitationId }
-        auth.currentUser?.uid?.let { userId ->
-            invitationsCache[userId] = invitationsCache[userId]?.filter { it.invitationId != invitationId } as List<ProjectInvitation>
         }
     }
 
     fun clearInvitationActionState() {
-        _invitationActionState.value = null
+        _uiState.update { it.copy(invitationActionState = null) }
+    }
+
+    private fun removeInvitation(invitationId: String) {
+        val updated = uiState.value.invitations.filter { it.invitationId != invitationId }
+        _uiState.update { it.copy(invitations = updated) }
+
+        auth.currentUser?.uid?.let { userId ->
+            invitationsCache[userId] = invitationsCache[userId]?.filter {
+                it.invitationId != invitationId
+            } ?: emptyList()
+        }
     }
 
     fun clearNotificationsCache() {
         invitationsCache.clear()
-        _invitations.value = emptyList()
+        _uiState.update { it.copy(invitations = emptyList()) }
     }
 
-
     fun clearError() {
-        _error.value = null
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

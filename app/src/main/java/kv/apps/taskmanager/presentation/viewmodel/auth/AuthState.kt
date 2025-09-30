@@ -8,5 +8,5 @@ data class AuthUiState(
     val isKeepLoggedIn: Boolean = false,
     val isLoading: Boolean = false,
     val isLoggingOut: Boolean = false,
-    val navigationEvent: AuthViewModel.AuthEvent? = null // Add navigation event to state
+    val navigationEvent: AuthViewModel.AuthEvent? = null
 )

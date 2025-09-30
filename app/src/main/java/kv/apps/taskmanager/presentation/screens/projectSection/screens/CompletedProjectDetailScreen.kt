@@ -68,9 +68,10 @@ fun CompletedProjectDetailScreen(
     taskViewModel: TaskViewModel,
     authViewModel: AuthViewModel
 ) {
-    val project by projectViewModel.selectedProject.collectAsState()
-    val loading by projectViewModel.loading.collectAsState()
-    val error by projectViewModel.error.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val project = projectUiState.selectedProject
+    val loading = projectUiState.isLoading
+    val error = projectUiState.errorMessage
     val taskUiState = taskViewModel.uiState.collectAsState()
     val tasks = taskUiState.value.tasks.filter { it.projectId == projectId }
     val authUiState = authViewModel.uiState.collectAsState().value
@@ -157,7 +158,7 @@ fun CompletedProjectDetailScreen(
                         item {
                             Column {
                                 Text(
-                                    text = project!!.title.uppercase(),
+                                    text = project.title.uppercase(),
                                     style = TextStyle(
                                         fontSize = 18.sp,
                                         fontFamily = customFont,
@@ -220,7 +221,7 @@ fun CompletedProjectDetailScreen(
                                         Spacer(modifier = Modifier.height(4.dp))
 
                                         Text(
-                                            text = project!!.dueDate,
+                                            text = project.dueDate,
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = Color.White
                                         )
@@ -255,7 +256,7 @@ fun CompletedProjectDetailScreen(
                                             )
                                         }
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        val totalMembers = project!!.teamMembers.size
+                                        val totalMembers = project.teamMembers.size
                                         val memberText = if (totalMembers == 1) "1 Member" else "$totalMembers Members"
                                         Text(
                                             text = memberText,
@@ -275,7 +276,7 @@ fun CompletedProjectDetailScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = project!!.description,
+                                    text = project.description,
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = Color.White
                                 )
@@ -317,7 +318,7 @@ fun CompletedProjectDetailScreen(
                                         )
                                     },
                                     authViewModel = authViewModel,
-                                    projectCreatedBy = project?.createdBy ?: "",
+                                    projectCreatedBy = project.createdBy,
                                     onDelete = null,
                                     isReadOnly = true
                                 )

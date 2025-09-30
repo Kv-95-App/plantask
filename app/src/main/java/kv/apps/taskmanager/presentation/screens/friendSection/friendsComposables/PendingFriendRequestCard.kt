@@ -20,6 +20,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.Delet
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.theme.onGoingCardColor
+import kv.apps.taskmanager.theme.contrastingTextColor
 
 @Composable
 fun PendingFriendRequestCard(
@@ -54,7 +55,7 @@ fun PendingFriendRequestCard(
             ) {
                 Text(
                     text = getInitials("${user.firstName} ${user.lastName}"),
-                    color = Color.Black,
+                    color = contrastingTextColor(mainAppColor),
                     fontWeight = FontWeight.Bold
                 )
             }

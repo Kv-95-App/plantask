@@ -35,6 +35,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.Secti
 import kv.apps.taskmanager.presentation.screens.utils.shared.menuBars.TopBar
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
+import kv.apps.taskmanager.presentation.components.OfflineStatusIndicator
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 
@@ -45,9 +46,10 @@ fun OngoingProjectsScreen (
     authViewModel: AuthViewModel,
     onAddProjectClicked: () -> Unit
 ) {
-    val projects by projectViewModel.projects.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val projects = projectUiState.projects
     val userId = authViewModel.uiState.collectAsState().value.userId
-    val isLoading by projectViewModel.loading.collectAsState()
+    val isLoading = projectUiState.isLoading
     val authUiState by authViewModel.uiState.collectAsState()
     val isLoggingOut = authUiState.isLoggingOut
 
@@ -121,6 +123,7 @@ fun OngoingProjectsScreen (
                         CircularProgressIndicator(color = mainAppColor)
                     }
                 } else {
+                    OfflineStatusIndicator()
                     SectionHeader(
                         title = "Ongoing Projects", onSeeAllClick = null,
                         isExpanded = false,

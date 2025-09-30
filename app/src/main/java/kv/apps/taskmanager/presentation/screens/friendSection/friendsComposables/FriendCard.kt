@@ -37,6 +37,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.Delet
 import kv.apps.taskmanager.presentation.viewmodel.userFriends.UserFriendsViewModel
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.theme.onGoingCardColor
+import kv.apps.taskmanager.theme.contrastingTextColor
 
 @Composable
 fun FriendCard(
@@ -73,10 +74,11 @@ fun FriendCard(
             ) {
                 Text(
                     text = getInitials(friend.displayName),
-                    color = Color.Black,
+                    color = contrastingTextColor(mainAppColor),
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    )
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black.copy(alpha = 0.87f)
+                )
                 )
             }
 

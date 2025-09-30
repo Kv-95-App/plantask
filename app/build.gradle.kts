@@ -25,28 +25,47 @@ android {
     }
         signingConfigs {
             getByName("debug") {
-                storeFile = file("C:\\Users\\lnkr\\.android\\debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+                val dbgStoreFile = (project.findProperty("DEBUG_STORE_FILE") as String?) ?: System.getenv("DEBUG_STORE_FILE")
+                val dbgStorePassword = (project.findProperty("DEBUG_STORE_PASSWORD") as String?) ?: System.getenv("DEBUG_STORE_PASSWORD")
+                val dbgKeyAlias = (project.findProperty("DEBUG_KEY_ALIAS") as String?) ?: System.getenv("DEBUG_KEY_ALIAS")
+                val dbgKeyPassword = (project.findProperty("DEBUG_KEY_PASSWORD") as String?) ?: System.getenv("DEBUG_KEY_PASSWORD")
+                if (!dbgStoreFile.isNullOrBlank() && !dbgStorePassword.isNullOrBlank() && !dbgKeyAlias.isNullOrBlank() && !dbgKeyPassword.isNullOrBlank()) {
+                    storeFile = file(dbgStoreFile)
+                    storePassword = dbgStorePassword
+                    keyAlias = dbgKeyAlias
+                    keyPassword = dbgKeyPassword
+                }
             }
 
             create("release") {
-                storeFile = file("plantaskkeystore.jks")
-                storePassword = "Lenkorr1239#"
-                keyAlias = "plantask"
-                keyPassword = "Lenkorr1239#"
+                val relStoreFile = (project.findProperty("RELEASE_STORE_FILE") as String?) ?: System.getenv("RELEASE_STORE_FILE")
+                val relStorePassword = (project.findProperty("RELEASE_STORE_PASSWORD") as String?) ?: System.getenv("RELEASE_STORE_PASSWORD")
+                val relKeyAlias = (project.findProperty("RELEASE_KEY_ALIAS") as String?) ?: System.getenv("RELEASE_KEY_ALIAS")
+                val relKeyPassword = (project.findProperty("RELEASE_KEY_PASSWORD") as String?) ?: System.getenv("RELEASE_KEY_PASSWORD")
+
+                if (!relStoreFile.isNullOrBlank() && !relStorePassword.isNullOrBlank() && !relKeyAlias.isNullOrBlank() && !relKeyPassword.isNullOrBlank()) {
+                    storeFile = file(relStoreFile)
+                    storePassword = relStorePassword
+                    keyAlias = relKeyAlias
+                    keyPassword = relKeyPassword
+                } else {
+                    logger.lifecycle("[Signing] Release signing config not set: missing RELEASE_* properties. The release build will be unsigned.")
+                }
             }
         }
 
         buildTypes {
             release {
-                isMinifyEnabled = false
+                isMinifyEnabled = true
+                isShrinkResources = true
                 proguardFiles(
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"
                 )
-                signingConfig = signingConfigs.getByName("release")
+                val hasReleaseSigning = signingConfigs.findByName("release")?.storeFile != null
+                if (hasReleaseSigning) {
+                    signingConfig = signingConfigs.getByName("release")
+                }
             }
         }
 
@@ -66,6 +85,24 @@ android {
 }
 
 dependencies {
+    // Room
+    val roomVersion = "2.7.0"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    
+    // Network Connectivity Monitoring 
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    
+    // Gson for type converters
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Hilt Work (for background sync)
+    implementation("androidx.hilt:hilt-work:1.2.0")
+
     implementation ("androidx.compose.material3:material3:1.1.2")
     implementation ("com.google.android.material:material:1.12.0")
 
@@ -106,6 +143,9 @@ dependencies {
     // Google Play Services
     implementation("com.google.android.gms:play-services-auth:21.1.0")
 
+    implementation("io.github.vanpra.compose-material-dialogs:datetime:0.9.0")
+    implementation("io.github.vanpra.compose-material-dialogs:core:0.9.0")
+
 
     // Material3
     implementation(libs.material3)
@@ -124,6 +164,10 @@ dependencies {
     implementation(libs.androidx.material3.v111)
 
     // Testing
+    testImplementation("junit:junit:4.13.2")
+    kaptTest(libs.hilt.android.compiler)
+    kaptTest("androidx.room:room-compiler:2.7.0")
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -132,3 +176,10 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 
+
+
+// Warn if FCM_SERVER_KEY is present in client build environment
+val fcmServerKey = (project.findProperty("FCM_SERVER_KEY") as String?) ?: System.getenv("FCM_SERVER_KEY")
+if (!fcmServerKey.isNullOrBlank()) {
+    logger.warn("[Security] FCM_SERVER_KEY detected in client build environment. Do NOT store or use server keys in the Android app. Remove it and keep server credentials only on the backend (e.g., Cloud Functions/Secret Manager).")
+}

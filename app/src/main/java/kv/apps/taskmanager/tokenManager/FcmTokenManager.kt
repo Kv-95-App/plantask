@@ -1,7 +1,6 @@
 package kv.apps.taskmanager.tokenManager
 
 import android.content.Context
-import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -22,7 +21,6 @@ class FcmTokenManager @Inject constructor(
     private val coroutineScope: CoroutineScope
 ) {
     companion object {
-        private const val TAG = "FcmTokenManager"
         private const val FCM_TOKEN_FIELD = "fcmToken"
         private const val FCM_UPDATED_FIELD = "fcmTokenUpdated"
     }
@@ -39,25 +37,11 @@ class FcmTokenManager @Inject constructor(
                         SetOptions.merge()
                     )
                     .await()
-                Log.d(TAG, "Token saved for user $userId")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to save FCM token", e)
+            } catch (_: Exception) {
             }
         }
     }
 
-    suspend fun getCurrentToken(userId: String): String? {
-        return try {
-            firestore.collection("users")
-                .document(userId)
-                .get()
-                .await()
-                .getString(FCM_TOKEN_FIELD)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch FCM token", e)
-            null
-        }
-    }
 
     fun refreshToken() {
         coroutineScope.launch {
@@ -65,10 +49,8 @@ class FcmTokenManager @Inject constructor(
                 auth.currentUser?.uid?.let { userId ->
                     val token = FirebaseMessaging.getInstance().token.await()
                     saveToken(userId, token)
-                    Log.d(TAG, "Token refreshed for user $userId")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Token refresh failed", e)
             }
         }
     }

@@ -178,6 +178,8 @@ class AuthViewModel @Inject constructor(
                                 navigationEvent = AuthEvent.NavigateToHome
                             )
                         }
+                        // Emit navigation event for UI to react (LoginScreen listens to events)
+                        viewModelScope.launch { _events.emit(AuthEvent.NavigateToHome) }
                         sessionUseCase.saveUserSession(user.uid)
                         if (keepLoggedIn) {
                             sessionUseCase.saveKeepLoggedIn(true)

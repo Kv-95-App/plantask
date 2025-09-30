@@ -1,8 +1,10 @@
 package kv.apps.taskmanager.domain.model
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
+@Keep
 data class User(
     val uid: String = "",
     val email: String = "",

@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +49,6 @@ import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import kv.apps.taskmanager.theme.onGoingCardColor
 
-@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun NotificationCard(
     invitation: ProjectInvitation,
@@ -58,6 +58,8 @@ fun NotificationCard(
     modifier: Modifier = Modifier,
     isLoading: Boolean
 ) {
+    val projectUiState by viewModel.uiState.collectAsState()
+
     val creatorNames by remember(invitation.fromUserId) {
         derivedStateOf {
             viewModel.creatorNamesCache[invitation.fromUserId]
@@ -146,30 +148,20 @@ fun NotificationCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFC0C0C0)
                         )
-
-                        when {
-                            viewModel.loading.value -> {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = mainAppColor,
-                                    strokeWidth = 2.dp
-                                )
-                            }
-                            creatorNames != null -> {
-                                Text(
-                                    text = "${creatorNames?.first ?: ""} ${creatorNames?.second ?: ""}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            else -> {
-                                Text(
-                                    text = "Unknown user",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFFC0C0C0)
-                                )
-                            }
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = mainAppColor,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = creatorNames?.let { "${it.first} ${it.second}" }
+                                    ?: "Unknown user",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (creatorNames != null) Color.White else Color(0xFFC0C0C0),
+                                fontWeight = if (creatorNames != null) FontWeight.SemiBold else FontWeight.Normal
+                            )
                         }
                     }
                 }
@@ -183,7 +175,7 @@ fun NotificationCard(
                     IconButton(
                         onClick = { showRejectDialog.value = true },
                         modifier = Modifier.size(48.dp),
-                        enabled = !isLoading
+                        enabled = !isLoading // Use the passed isLoading state
                     ) {
                         Icon(
                             Icons.Default.Close,
@@ -207,6 +199,8 @@ fun NotificationCard(
             }
         }
     }
+
+    // Dialogs remain the same
     if (showAcceptDialog.value) {
         AlertDialog(
             onDismissRequest = { showAcceptDialog.value = false },
@@ -226,15 +220,21 @@ fun NotificationCard(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onAccept()
-                    showAcceptDialog.value = false
-                }) {
+                TextButton(
+                    onClick = {
+                        onAccept()
+                        showAcceptDialog.value = false
+                    },
+                    enabled = !isLoading
+                ) {
                     Text("Yes", color = mainAppColor)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAcceptDialog.value = false }) {
+                TextButton(
+                    onClick = { showAcceptDialog.value = false },
+                    enabled = !isLoading
+                ) {
                     Text("No", color = mainAppColor)
                 }
             },
@@ -261,15 +261,21 @@ fun NotificationCard(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onReject()
-                    showRejectDialog.value = false
-                }) {
+                TextButton(
+                    onClick = {
+                        onReject()
+                        showRejectDialog.value = false
+                    },
+                    enabled = !isLoading
+                ) {
                     Text("Yes", color = mainAppColor)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRejectDialog.value = false }) {
+                TextButton(
+                    onClick = { showRejectDialog.value = false },
+                    enabled = !isLoading
+                ) {
                     Text("No", color = mainAppColor)
                 }
             },

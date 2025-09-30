@@ -63,12 +63,21 @@ fun ProjectListScreen(
     onAddProjectClicked: () -> Unit
 ) {
     val authUiState by authViewModel.uiState.collectAsState()
-    val projects by projectViewModel.projects.collectAsState()
-    val isLoading by projectViewModel.loading.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val projects = projectUiState.projects
+    val isLoading = projectUiState.isLoading
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
     val isLoggingOut = authUiState.isLoggingOut
     val userId = authUiState.userId
+
+    LaunchedEffect(authUiState.userId, authUiState.user, isLoggingOut) {
+        if (!isLoggingOut && (authUiState.userId == null || authUiState.user == null)) {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.ProjectList.route) { inclusive = true }
+            }
+        }
+    }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
@@ -77,11 +86,9 @@ fun ProjectListScreen(
     var ongoingExpanded by remember { mutableStateOf(true) }
 
     val filteredProjects = remember(projects, userId) {
+        val uid = userId ?: return@remember emptyList()
         projects.filter { project ->
-            userId.let { uid ->
-                project.createdBy == uid.toString() ||
-                        project.teamMembers.any { it == uid.toString() }
-            }
+            project.createdBy == uid || project.teamMembers.any { it == uid }
         }
     }
 
@@ -154,7 +161,9 @@ fun ProjectListScreen(
                             },
                         shape = FloatingActionButtonDefaults.extendedFabShape
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Project")
+                        Icon(Icons.Default.Add,
+                            contentDescription = "Add Project",
+                            tint = Color.Black)
                     }
                 }
             }
@@ -187,6 +196,7 @@ fun ProjectListScreen(
                         item {
                             SectionHeader(
                                 title = "Completed Projects (${completedProjects.size})",
+                                modifier = Modifier.padding(4.dp),
                                 isExpanded = completedExpanded,
                                 onToggleClick = {
                                     completedExpanded = !completedExpanded
@@ -202,7 +212,7 @@ fun ProjectListScreen(
                                 if (completedProjects.isEmpty()) {
                                     Text(
                                         text = "No completed projects",
-                                        modifier = Modifier.padding(4.dp),
+                                        modifier = Modifier.padding(16.dp),
                                         color = Color.Gray
                                     )
                                 } else {
@@ -239,6 +249,7 @@ fun ProjectListScreen(
 
                             SectionHeader(
                                 title = "Ongoing Projects (${ongoingProjects.size})",
+                                modifier = Modifier.padding(4.dp),
                                 isExpanded = ongoingExpanded,
                                 onToggleClick = {
                                     ongoingExpanded = !ongoingExpanded

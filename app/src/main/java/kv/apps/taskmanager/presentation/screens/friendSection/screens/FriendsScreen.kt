@@ -119,26 +119,12 @@ fun FriendsScreen(
     }
 
     if (!hasUserId) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundColor),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = mainAppColor)
-        }
+        kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.LoadingOverlay()
         return
     }
 
     if (isLoading && friendsState == null && pendingRequestsState == null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundColor),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = mainAppColor)
-        }
+        kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.LoadingOverlay()
         return
     }
 

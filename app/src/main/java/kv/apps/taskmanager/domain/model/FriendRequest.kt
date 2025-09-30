@@ -1,8 +1,9 @@
 package kv.apps.taskmanager.domain.model
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.PropertyName
-import java.security.Timestamp
 
+@Keep
 data class FriendRequest(
     @PropertyName("requestId") val requestId: String = "",
     @PropertyName("fromUserId") val fromUserId: String = "",

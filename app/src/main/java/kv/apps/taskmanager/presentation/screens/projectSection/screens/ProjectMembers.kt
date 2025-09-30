@@ -43,13 +43,14 @@ fun ProjectMembers(
     authViewModel: AuthViewModel,
     showInvites: Boolean
 ) {
-    val teamMembersWithDetails by projectViewModel.teamMembersWithDetails.collectAsState()
-    val isLoading by projectViewModel.teamMembersLoading.collectAsState()
-    val error by projectViewModel.teamMembersError.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val teamMembersWithDetails = projectUiState.teamMembersWithDetails
+    val isLoading = projectUiState.isLoading
+    val error = projectUiState.errorMessage
     val authUiState by authViewModel.uiState.collectAsState()
     val isLoggingOut = authUiState.isLoggingOut
 
-    val selectedProject by projectViewModel.selectedProject.collectAsState()
+    val selectedProject = projectUiState.selectedProject
     val isCreator = selectedProject?.createdBy == authViewModel.uiState.value.userId
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -61,7 +62,7 @@ fun ProjectMembers(
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(teamMembersWithDetails.size) {
-        projectViewModel.fetchTeamMembersForProject(projectId, forceRefresh = false)
+        projectViewModel.fetchTeamMembersForProject(projectId, forceRefresh = true)
     }
 
     LaunchedEffect(projectId, refreshTrigger) {
@@ -110,7 +111,7 @@ fun ProjectMembers(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = error!!, color = Color.Red)
+                        Text(text = error, color = Color.Red)
                     }
                 } else {
                     Text(
@@ -138,7 +139,7 @@ fun ProjectMembers(
                                     showRemoveButton = isCreator && !isCurrentUser,
                                     onRemoveClick = {
                                         memberToDelete = member
-                                        showDeleteDialog = showInvites
+                                        showDeleteDialog = true
                                     }
                                 )
                             }

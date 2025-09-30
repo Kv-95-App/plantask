@@ -71,20 +71,6 @@ fun TopBar(
         }
 
         Box(
-            modifier = Modifier.weight(2f),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.plantasksmall),
-                contentDescription = "Task Management",
-                modifier = Modifier
-                    .height(90.dp)
-                    .fillMaxWidth(),
-                contentScale = ContentScale.Fit
-            )
-        }
-
-        Box(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = 16.dp),

@@ -58,6 +58,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.remem
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
+import kv.apps.taskmanager.presentation.components.OfflineStatusIndicator
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
@@ -93,9 +94,10 @@ fun AddTaskScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
 
-    val projectMembersState by projectViewModel.teamMembersWithDetails.collectAsState()
-    val isLoading by projectViewModel.teamMembersLoading.collectAsState()
-    val error by projectViewModel.teamMembersError.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val projectMembersState = projectUiState.teamMembersWithDetails
+    val isLoading = projectUiState.isTeamMembersLoading
+    val error = projectUiState.errorMessage
 
     val allMembers = remember(projectMembersState, currentUser) {
         val members = projectMembersState.toMutableList()
@@ -170,6 +172,9 @@ fun AddTaskScreen(
                         .padding(paddingValues)
                         .padding(16.dp)
                 ) {
+                    item {
+                        OfflineStatusIndicator()
+                    }
                     if (isLoading) {
                         item {
                             Box(

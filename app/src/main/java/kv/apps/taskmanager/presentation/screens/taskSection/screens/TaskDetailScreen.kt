@@ -77,6 +77,7 @@ import kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.remem
 import kv.apps.taskmanager.presentation.viewmodel.auth.AuthViewModel
 import kv.apps.taskmanager.presentation.viewmodel.project.ProjectViewModel
 import kv.apps.taskmanager.presentation.viewmodel.task.TaskViewModel
+import kv.apps.taskmanager.presentation.components.OfflineStatusIndicator
 import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.LocalDate
@@ -97,11 +98,11 @@ fun TaskDetailScreen(
     val task = uiState.selectedTask
     val loading = uiState.isLoading
     val errorMessage = uiState.errorMessage
-    val projectTeamMembers by projectViewModel.selectedProject.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val projectTeamMembers = projectUiState.selectedProject
     val authState by authViewModel.uiState.collectAsState()
     val isLoggingOut = authState.isLoggingOut
 
-    // Comment-related state
     val commentsState by taskViewModel.commentsState.collectAsState()
     var newCommentText by remember { mutableStateOf("") }
     val currentTaskComments = commentsState[taskId] ?: emptyList()
@@ -129,7 +130,7 @@ fun TaskDetailScreen(
     var editedDetails by remember { mutableStateOf("") }
     var editedDueDate by remember { mutableStateOf("") }
     var isCompleted by remember { mutableStateOf(false) }
-    val projectMembersState by projectViewModel.teamMembersWithDetails.collectAsState()
+    val projectMembersState = projectUiState.teamMembersWithDetails
     val currentUser = authViewModel.uiState.collectAsState().value.user
     var searchQuery by remember { mutableStateOf("") }
     var selectedMembers by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -207,11 +208,7 @@ fun TaskDetailScreen(
     }
 
     LaunchedEffect(uiState.isLoading) {
-        if (uiState.isLoading) {
-            showContent = false
-        } else {
-            showContent = true
-        }
+        showContent = !uiState.isLoading
     }
 
     val alpha by animateFloatAsState(
@@ -298,6 +295,11 @@ fun TaskDetailScreen(
                                 .padding(horizontal = 16.dp)
                                 .alpha(alpha)
                         ) {
+                            OfflineStatusIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            )
                             LazyColumn(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -414,7 +416,7 @@ fun TaskDetailScreen(
                                     AssignedMembersSection(
                                         assignedTo = if (isEditing) selectedMembers.toList() else task.assignedTo,
                                         initialsMap = uiState.taskAssignedUsersInitials,
-                                        isLoading = loading,
+                                        isLoading = false,
                                         canEdit = canEdit.value,
                                         isEditing = isEditing,
                                         onEditClick = { showMemberSelection = true }

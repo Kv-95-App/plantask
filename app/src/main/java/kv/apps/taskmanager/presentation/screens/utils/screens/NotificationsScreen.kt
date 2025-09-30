@@ -63,10 +63,11 @@ fun NotificationsScreen(
     val authUiState by authViewModel.uiState.collectAsState()
     val isLoggingOut = authUiState.isLoggingOut
 
-    val isLoading by projectViewModel.notificationsLoading.collectAsState()
-    val error by projectViewModel.error.collectAsState()
-    val invitations by projectViewModel.invitations.collectAsState()
-    val invitationActionState by projectViewModel.invitationActionState.collectAsState()
+    val projectUiState by projectViewModel.uiState.collectAsState()
+    val isLoading = projectUiState.isNotificationsLoading
+    val error = projectUiState.errorMessage
+    val invitations = projectUiState.invitations
+    val invitationActionState = projectUiState.invitationActionState
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
@@ -169,12 +170,7 @@ fun NotificationsScreen(
             ) {
                 when {
                     isLoading && invitations.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = mainAppColor)
-                        }
+                        kv.apps.taskmanager.presentation.screens.utils.shared.uiComposables.LoadingOverlay()
                     }
                     isEmpty -> {
                         Box(
@@ -223,7 +219,7 @@ fun NotificationsScreen(
                                         )
                                     },
                                     viewModel = projectViewModel,
-                                    isLoading = projectViewModel.loading.value,
+                                    isLoading = projectUiState.isNotificationsLoading,
                                     modifier = Modifier.padding(8.dp)
                                 )
                             }

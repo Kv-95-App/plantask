@@ -19,7 +19,7 @@ object NotificationModule {
     @Provides
     @Singleton
     fun provideCoroutineScope(): CoroutineScope {
-        return CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        return CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
     @Provides

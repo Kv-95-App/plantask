@@ -21,7 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -59,6 +61,7 @@ import kv.apps.taskmanager.theme.backgroundColor
 import kv.apps.taskmanager.theme.mainAppColor
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun RegisterScreen(
@@ -93,18 +96,28 @@ fun RegisterScreen(
                         popUpTo(Screen.Register.route) { inclusive = true }
                     }
                 }
+
                 is AuthViewModel.AuthEvent.Error -> {
                     coroutineScope.launch {
                         snackBarHostState.showSnackbar(event.message)
                     }
                 }
+
                 else -> {}
             }
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackBarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackBarHostState) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = Color(0xFF323232),
+                contentColor = Color.White,
+                actionColor = mainAppColor,
+                dismissActionContentColor = Color.White
+            )
+        } }
     ) {
         Box(
             modifier = Modifier
@@ -120,18 +133,15 @@ fun RegisterScreen(
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(20.dp))
 
                 Image(
                     painter = painterResource(id = R.drawable.plantasklogo),
                     contentDescription = "Task Management",
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp),
+                        .fillMaxSize()
+                        .height(140.dp),
                     contentScale = ContentScale.Fit
                 )
-
-                Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
                     text = "Create Account",
@@ -169,10 +179,10 @@ fun RegisterScreen(
                         onValueChange = {},
                         label = { Text("Birthday") },
                         modifier = Modifier.fillMaxWidth(),
+                        colors = textFieldColors2(),
+                        visualTransformation = VisualTransformation.None,
                         readOnly = true,
-                        enabled = false,
-                        colors = textFieldColors(),
-                        visualTransformation = VisualTransformation.None
+                        enabled = false
                     )
                 }
 
@@ -233,13 +243,18 @@ fun RegisterScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = mainAppColor
+                        containerColor = mainAppColor,
+                        disabledContainerColor = Color.Gray
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .height(48.dp),
-                    enabled = !isLoading
+                    enabled = !isLoading && firstName.isNotBlank() && lastName.isNotBlank() &&
+                            birthday.isNotBlank() && email.isNotBlank() &&
+                            password.isNotBlank() && confirmPassword.isNotBlank() &&
+                            isValidEmail(email) && password.length >= 6 &&
+                            password == confirmPassword
                 ) {
                     if (isLoading) {
                         Box(
@@ -253,7 +268,11 @@ fun RegisterScreen(
                     } else {
                         Text(
                             text = "Register",
-                            color = Color.Black,
+                            color = if (firstName.isNotBlank() && lastName.isNotBlank() && birthday.isNotBlank() && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() && isValidEmail(email) && password.length >= 6 && password == confirmPassword) {
+                                Color.Black
+                            } else {
+                                Color.Black
+                            },
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -287,37 +306,46 @@ fun RegisterScreen(
         }
     }
 }
-
 fun isValidEmail(email: String): Boolean {
     return Patterns.EMAIL_ADDRESS.matcher(email).matches()
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    visualTransformation: VisualTransformation = VisualTransformation.None
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    readOnly: Boolean = false,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     TextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-        colors = textFieldColors(),
-        visualTransformation = visualTransformation
+        modifier = modifier.fillMaxWidth(),
+        colors = textFieldColors2(),
+        visualTransformation = visualTransformation,
+        readOnly = readOnly,
+        enabled = enabled
     )
 }
 
 @Composable
-fun textFieldColors() = TextFieldDefaults.colors(
+fun textFieldColors2() = TextFieldDefaults.colors(
     focusedContainerColor = Color(0xFF333A47),
     unfocusedContainerColor = Color(0xFF333A47),
+    disabledContainerColor = Color(0xFF333A47),
     focusedIndicatorColor = Color(0xFFFACD3C),
     unfocusedIndicatorColor = Color.Gray,
+    disabledIndicatorColor = Color.Gray,
     cursorColor = Color.White,
     focusedTextColor = Color.White,
     unfocusedTextColor = Color.White,
+    disabledTextColor = Color.White,
     focusedLabelColor = Color.White,
-    unfocusedLabelColor = Color.Gray
+    unfocusedLabelColor = Color.Gray,
+    disabledLabelColor = Color.Gray
 )

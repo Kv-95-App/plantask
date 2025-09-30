@@ -1,15 +1,45 @@
+# =========================
+# Android / Kotlin / Gradle
+# =========================
+
+# Gradle
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+out/
+
+# IDE
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+.idea/
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# Local configuration
 local.properties
+gradle.properties
+scripts/set-signing-env.ps1
+*.jks
+
+# Build outputs
+app/release/
+*.apk
+*.aab
+*.dm
+*.log
+
+# Firebase
+firebase-debug.log
+
+# OS-specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Generated files
+.navigation/
+app/generated/
+
+# Kotlin / Java build cache
+build/
+out/

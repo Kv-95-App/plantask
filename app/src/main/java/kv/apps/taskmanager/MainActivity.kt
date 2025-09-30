@@ -20,8 +20,11 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -43,6 +46,9 @@ import kv.apps.taskmanager.theme.onGoingCardColor
 import kv.apps.taskmanager.tokenManager.FcmTokenManager
 import javax.inject.Inject
 import android.os.Handler
+import androidx.activity.result.ActivityResultLauncher
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -53,54 +59,31 @@ class MainActivity : ComponentActivity() {
         const val NOTIFICATION_CHANNEL_NAME = "General Notifications"
     }
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            Firebase.auth.currentUser?.uid?.let { userId ->
-                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                    try {
-                        if (task.isSuccessful) {
-                            task.result?.let { token ->
-                                tokenManager.saveToken(userId, token)
-                                Log.d(TAG, "FCM token retrieved and saved successfully")
-                            }
-                        } else {
-                            // TASK FAILED - Handle gracefully
-                            val exception = task.exception
-                            Log.w(TAG, "FCM token retrieval failed after permission grant", exception)
-                            // You might want to inform the user or retry
-                            android.os.Handler(Looper.getMainLooper()).postDelayed({
-                                checkAndRequestNotificationPermission()
-                            }, 5000L)
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Unexpected error during FCM token retrieval", e)
-                    }
-                }
-            }
-        } else {
-            Toast.makeText(
-                this,
-                "Notification permission denied - some features may not work",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
-    private val googleSignInLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        authViewModel.handleGoogleSignInResult(result.data, keepLoggedIn = false)
-    }
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
 
     @Inject
     lateinit var tokenManager: FcmTokenManager
 
     private val authViewModel: AuthViewModel by viewModels()
+    private var pendingIntent: Intent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        pendingIntent = intent
+
+        requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            handleNotificationPermissionResult(isGranted)
+        }
+
+        googleSignInLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            authViewModel.handleGoogleSignInResult(result.data, keepLoggedIn = false)
+        }
 
         createNotificationChannel()
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -115,9 +98,24 @@ class MainActivity : ComponentActivity() {
             TaskManagerTheme {
                 val navController = rememberNavController()
                 val view = LocalView.current
+                var hasHandledInitialIntent by remember { mutableStateOf(false) }
 
-                LaunchedEffect(Unit) {
-                    handleNotificationIntent(intent, navController)
+                LaunchedEffect(hasHandledInitialIntent) {
+                    if (!hasHandledInitialIntent) {
+                        kotlinx.coroutines.delay(500)
+                        handleNotificationIntent(pendingIntent, navController, isInitialIntent = true)
+                        hasHandledInitialIntent = true
+                        pendingIntent = null
+                    }
+                }
+
+                LaunchedEffect(pendingIntent) {
+                    pendingIntent?.let { intent ->
+                        if (hasHandledInitialIntent) {
+                            handleNotificationIntent(intent, navController, isInitialIntent = false)
+                            pendingIntent = null
+                        }
+                    }
                 }
 
                 SideEffect {
@@ -144,7 +142,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent)
+        pendingIntent = intent
     }
 
     private fun createNotificationChannel() {
@@ -165,42 +163,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkAndRequestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    Firebase.auth.currentUser?.uid?.let { userId ->
-                        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                            try {
-                                if (task.isSuccessful) {
-                                    task.result?.let { token ->
-                                        tokenManager.saveToken(userId, token)
-                                        Log.d(TAG, "FCM token retrieved and saved successfully")
-                                    }
-                                } else {
-                                    val exception = task.exception
-                                    Log.w(TAG, "FCM token retrieval failed, will retry", exception)
-                                    Handler(Looper.getMainLooper()).postDelayed({
-                                        checkAndRequestNotificationPermission()
-                                    }, 5000L)
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Unexpected error during FCM token retrieval", e)
-                            }
-                        }
-                    }
-                }
-                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    showPermissionRationale()
-                }
-                else -> {
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        } else {
+    private fun handleNotificationPermissionResult(isGranted: Boolean) {
+        if (isGranted) {
             Firebase.auth.currentUser?.uid?.let { userId ->
                 FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
                     try {
@@ -211,7 +175,7 @@ class MainActivity : ComponentActivity() {
                             }
                         } else {
                             val exception = task.exception
-                            Log.w(TAG, "FCM token retrieval failed, will retry", exception)
+                            Log.w(TAG, "FCM token retrieval failed after permission grant", exception)
                             Handler(Looper.getMainLooper()).postDelayed({
                                 checkAndRequestNotificationPermission()
                             }, 5000L)
@@ -219,6 +183,56 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Unexpected error during FCM token retrieval", e)
                     }
+                }
+            }
+        } else {
+            Toast.makeText(
+                this,
+                "Notification permission denied - some features may not work",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    handleNotificationPermissionGranted()
+                }
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    showPermissionRationale()
+                }
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            handleNotificationPermissionGranted()
+        }
+    }
+
+    private fun handleNotificationPermissionGranted() {
+        Firebase.auth.currentUser?.uid?.let { userId ->
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                try {
+                    if (task.isSuccessful) {
+                        task.result?.let { token ->
+                            tokenManager.saveToken(userId, token)
+                            Log.d(TAG, "FCM token retrieved and saved successfully")
+                        }
+                    } else {
+                        val exception = task.exception
+                        Log.w(TAG, "FCM token retrieval failed, will retry", exception)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            checkAndRequestNotificationPermission()
+                        }, 5000L)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Unexpected error during FCM token retrieval", e)
                 }
             }
         }
@@ -233,24 +247,30 @@ class MainActivity : ComponentActivity() {
         requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    private fun handleNotificationIntent(intent: Intent?, navController: NavHostController) {
-        intent?.extras?.let { bundle ->
-            val type = bundle.getString("type")
+    private fun handleNotificationIntent(intent: Intent?, navController: NavHostController, isInitialIntent: Boolean) {
+        if (intent?.hasExtra("type") == true) {
+            val type = intent.getStringExtra("type")
             val route = when (type) {
                 "friend_request" -> Screen.FriendRequests.route
                 "project_invitation" -> {
-                    val projectId = bundle.getString("projectId") ?: ""
+                    val projectId = intent.getStringExtra("projectId") ?: ""
                     Screen.ProjectInvites.createRoute(projectId)
                 }
-                else -> Screen.Notifications.route
+                else -> {
+                    if (!isInitialIntent) Screen.Notifications.route else null
+                }
             }
 
-            navController.navigate(route) {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
+            route?.let {
+                navController.navigate(it) {
+                    if (!isInitialIntent) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                    }
+                    launchSingleTop = true
+                    restoreState = true
                 }
-                launchSingleTop = true
-                restoreState = true
             }
         }
     }

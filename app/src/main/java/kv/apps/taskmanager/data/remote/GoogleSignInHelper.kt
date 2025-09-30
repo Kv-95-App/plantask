@@ -51,7 +51,7 @@ class GoogleSignInHelper @Inject constructor(
         return try {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             task.getResult(ApiException::class.java)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -61,7 +61,7 @@ class GoogleSignInHelper @Inject constructor(
             val credential = GoogleAuthProvider.getCredential(account.idToken, null)
             firebaseAuth.signInWithCredential(credential).await()
             true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }

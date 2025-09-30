@@ -89,7 +89,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, getString(R.string.default_notification_channel_id)).apply {
-            setSmallIcon(R.drawable.ic_notifcation)
+            setSmallIcon(R.drawable.ic_stat_push_notification_icon_final)
             setContentTitle(title ?: getString(R.string.app_name))
             setContentText(body ?: getString(R.string.new_notification))
             priority = NotificationCompat.PRIORITY_HIGH
@@ -121,7 +121,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "Refreshed FCM token: $token")
+        Log.d(TAG, "Refreshed FCM token received")
         Firebase.auth.currentUser?.uid?.let { userId ->
             tokenManager.saveToken(userId, token)
         }
